@@ -120,15 +120,37 @@ class CloudinaryService {
   }
 
   /**
+   * Sanitize filename to remove emojis and special characters
+   */
+  private sanitizeFilename(filename: string): string {
+    // Remove emojis and special characters, keep only alphanumeric, dots, hyphens, underscores
+    return filename
+      .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
+      .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Misc Symbols and Pictographs
+      .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport and Map
+      .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Misc symbols
+      .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Dingbats
+      .replace(/[\u{FE00}-\u{FE0F}]/gu, '')   // Variation Selectors
+      .replace(/[\u{1F900}-\u{1F9FF}]/gu, '') // Supplemental Symbols and Pictographs
+      .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '') // Symbols and Pictographs Extended-A
+      .replace(/[^\w\s.-]/g, '')               // Remove remaining special chars
+      .replace(/\s+/g, '_')                    // Replace spaces with underscores
+      .replace(/_{2,}/g, '_')                  // Replace multiple underscores with single
+      .replace(/^[._-]+|[._-]+$/g, '')         // Remove leading/trailing dots, underscores, hyphens
+      .trim();
+  }
+
+  /**
    * Upload video introduction
    */
   async uploadVideo(
     fileBuffer: Buffer,
     filename: string
   ): Promise<UploadResult> {
+    const sanitizedFilename = this.sanitizeFilename(filename);
     return this.uploadFile(fileBuffer, {
       folder: 'ats/videos',
-      filename: `video_${Date.now()}_${filename}`,
+      filename: `video_${Date.now()}_${sanitizedFilename}`,
       resourceType: 'video',
       allowedFormats: ['mp4', 'mov', 'avi', 'webm', 'mkv'],
     });

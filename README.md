@@ -57,6 +57,41 @@ ats-backend/
 - `npm run seed` - Seed database with fake data
 - `npm run migrate` - Run database migrations
 
+### Utility Scripts
+
+**Reprocess Missing Videos from IMAP** - Directly check IMAP server and recover missing videos:
+```bash
+# Dry run (check first 50 applications)
+npx tsx scripts/reprocess-missing-videos-from-imap.ts
+
+# Live mode (process first 50)
+npx tsx scripts/reprocess-missing-videos-from-imap.ts --live
+
+# Process ALL applications
+npx tsx scripts/reprocess-missing-videos-from-imap.ts --all --live
+```
+
+**Video Recovery** - Recover missing intro videos from stored email records:
+```bash
+# Dry run (check what would be recovered)
+npx tsx scripts/recover-missing-videos.ts
+
+# Live mode (apply changes)
+npx tsx scripts/recover-missing-videos.ts --live
+```
+
+**Fix Corrupted Applications** - Fix applications with missing/corrupted resume data:
+```bash
+# Check for corrupted applications
+npx tsx scripts/fix-corrupted-applications.ts
+
+# Dry run (see what would change)
+npx tsx scripts/fix-corrupted-applications.ts --dry-run
+
+# Fix applications
+npx tsx scripts/fix-corrupted-applications.ts --fix
+```
+
 ## 🔐 Environment Variables
 
 See `.env.example` for all required environment variables.

@@ -309,6 +309,143 @@ class IMAPService {
   }
 
   /**
+   * 🔥 Fetch ALL emails (including read) for specific senders
+   * This is for comprehensive video recovery from all applicant emails
+   */
+  async fetchAllEmailsFromSenders(
+    emailAccount: IEmailAccount,
+    senderEmails: string[],
+    maxEmails: number = 1000,
+    sinceDate?: Date
+  ): Promise<EmailMessage[]> {
+    return new Promise((resolve, reject) => {
+      const messages: EmailMessage[] = [];
+
+      // Try to decrypt password, if it fails, use plain text
+      let password = emailAccount.imapPassword;
+      try {
+        password = decrypt(emailAccount.imapPassword);
+      } catch (err) {
+        logger.warn('[IMAP] Password decryption failed, using plain text password');
+        password = emailAccount.imapPassword;
+      }
+
+      const imap = this.createConnection({
+        host: emailAccount.imapHost,
+        port: emailAccount.imapPort,
+        user: emailAccount.imapUser,
+        password: password,
+        tls: emailAccount.imapTls,
+      });
+
+      imap.once('ready', () => {
+        logger.info('[IMAP] Connection ready for ALL emails fetch...');
+        
+        imap.openBox('INBOX', false, (err, box) => {
+          if (err) {
+            imap.end();
+            return reject(new InternalServerError(`Failed to open inbox: ${err.message}`));
+          }
+
+          logger.info(`[IMAP] 🔥 Fetching ALL emails (read + unread). Total in inbox: ${box.messages.total}`);
+
+          // 🔥 Build search criteria - search by sender emails
+          const searchCriteria: any[] = ['ALL']; // Get ALL emails, not just UNSEEN
+          
+          if (sinceDate) {
+            const formattedDate = sinceDate.toISOString().split('T')[0];
+            searchCriteria.push(['SINCE', formattedDate]);
+            logger.info(`[IMAP] 🔥 Using date filter: SINCE ${formattedDate}`);
+          }
+
+          // Search for ALL emails (with optional date filter)
+          imap.search(searchCriteria, (err, results) => {
+            if (err) {
+              logger.error('[IMAP] Search error:', err);
+              imap.end();
+              return reject(new InternalServerError(`Failed to search emails: ${err.message}`));
+            }
+
+            logger.info(`[IMAP] Search completed. Found ${results?.length || 0} total messages.`);
+
+            if (!results || results.length === 0) {
+              logger.warn('[IMAP] No emails found, closing connection');
+              imap.end();
+              return resolve([]);
+            }
+
+            // Limit results
+            const uids = results.slice(-maxEmails); // Get latest emails
+            logger.info(`[IMAP] Fetching ${uids.length} email(s) to filter by sender...`);
+
+            const fetch = imap.fetch(uids, {
+              bodies: '',
+              markSeen: false, // Don't mark as read
+            });
+
+            const parsePromises: Promise<void>[] = [];
+
+            fetch.on('message', (msg) => {
+              msg.on('body', (stream) => {
+                const parsePromise = new Promise<void>((resolveMsg) => {
+                  simpleParser(stream as any, async (err, parsed) => {
+                    if (err) {
+                      logger.error('[IMAP] Email parsing error:', err);
+                      resolveMsg();
+                      return;
+                    }
+
+                    try {
+                      const message = this.parseEmail(parsed);
+                      
+                      // 🔥 Filter by sender email (case-insensitive)
+                      const fromEmail = message.from.toLowerCase();
+                      const isFromApplicant = senderEmails.some(email => 
+                        fromEmail.includes(email.toLowerCase())
+                      );
+                      
+                      if (isFromApplicant) {
+                        messages.push(message);
+                        logger.info(`[IMAP] ✓ Found email from applicant: ${message.from}`);
+                      }
+                    } catch (error) {
+                      logger.error('[IMAP] Error processing email:', error);
+                    }
+                    resolveMsg();
+                  });
+                });
+                parsePromises.push(parsePromise);
+              });
+            });
+
+            fetch.once('error', (err) => {
+              logger.error('[IMAP] Fetch error:', err);
+              imap.end();
+              reject(new InternalServerError(`Failed to fetch emails: ${err.message}`));
+            });
+
+            fetch.once('end', async () => {
+              logger.info('[IMAP] Fetch completed, waiting for parsing...');
+              await Promise.all(parsePromises);
+              logger.info(`[IMAP] ✓ All emails parsed and filtered. Found ${messages.length} from applicants.`);
+              imap.end();
+              resolve(messages);
+            });
+          });
+        });
+      });
+
+      imap.once('error', (err: Error) => {
+        logger.error('[IMAP] Connection error:', err);
+        reject(new InternalServerError(`IMAP connection failed: ${err.message}`));
+      });
+
+      logger.info(`[IMAP] Connecting to fetch emails from ${senderEmails.length} applicants...`);
+      imap.connect();
+    });
+  }
+
+  /**
    * Mark an email as read
    */
   async markAsRead(emailAccount: IEmailAccount, messageId: string): Promise<void> {

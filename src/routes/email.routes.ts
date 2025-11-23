@@ -391,12 +391,23 @@ const checkEmailsForAllAccounts = async () => {
               const { applicationService } = require('../services/firestore');
               
               // ✅ STEP 1: Check applications collection for duplicates (not just candidates)
+              // Also check by messageId to prevent race conditions
               const existingApplications = await applicationService.find([
                 { field: 'email', operator: '==', value: senderEmail }
               ]);
               
               if (existingApplications.length > 0) {
                 logger.info(`Application from ${senderEmail} already exists, skipping`);
+                continue;
+              }
+              
+              // 🔥 Race condition prevention: Check by messageId
+              const existingByMessageId = await applicationService.find([
+                { field: 'sourceMessageId', operator: '==', value: email.messageId }
+              ]);
+              
+              if (existingByMessageId.length > 0) {
+                logger.info(`Application with messageId ${email.messageId} already exists, skipping`);
                 continue;
               }
               
@@ -538,6 +549,7 @@ const checkEmailsForAllAccounts = async () => {
                   source: 'email_automation',
                   sourceEmail: senderEmail,
                   sourceEmailAccountId: account.id,
+                  sourceMessageId: email.messageId, // 🔥 Store messageId to prevent duplicates
                   firstName,
                   lastName,
                   email: senderEmail,
@@ -1106,6 +1118,17 @@ router.post("/automation/bulk-import", requireRole("admin"), async (req, res): P
           skipped++;
           continue;
         }
+        
+        // 🔥 Race condition prevention: Check by messageId
+        const existingByMessageId = await applicationService.find([
+          { field: 'sourceMessageId', operator: '==', value: email.messageId }
+        ]);
+        
+        if (existingByMessageId.length > 0) {
+          logger.info(`⏭️  Application with messageId ${email.messageId} already exists, skipping`);
+          skipped++;
+          continue;
+        }
 
         // Find resume attachment
         const resumeAttachment = email.attachments.find((att: any) => 
@@ -1132,15 +1155,22 @@ router.post("/automation/bulk-import", requireRole("admin"), async (req, res): P
             resumeAttachment.filename
           );
 
+          // Extract video link from body
+          const videoLinkMatch = email.body.match(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|vimeo\.com\/|loom\.com\/share\/)[^\s]+)/i);
+          const videoLink = videoLinkMatch ? videoLinkMatch[0] : null;
+
           // Upload video if present
-          let videoUrl = null;
+          let videoUrl = videoLink; // Use link if provided
           const videoAttachment = email.attachments.find((att: any) =>
             att.contentType.includes('video') ||
             att.filename.toLowerCase().endsWith('.mp4') ||
-            att.filename.toLowerCase().endsWith('.mov')
+            att.filename.toLowerCase().endsWith('.mov') ||
+            att.filename.toLowerCase().endsWith('.avi') ||
+            att.filename.toLowerCase().endsWith('.webm') ||
+            att.filename.toLowerCase().endsWith('.mkv')
           );
 
-          if (videoAttachment) {
+          if (videoAttachment && !videoUrl) {
             try {
               logger.info(`📤 Uploading video: ${videoAttachment.filename}`);
               const videoUploadResult = await cloudinaryService.uploadVideo(
@@ -1148,6 +1178,7 @@ router.post("/automation/bulk-import", requireRole("admin"), async (req, res): P
                 videoAttachment.filename
               );
               videoUrl = videoUploadResult.url;
+              logger.info(`Video uploaded: ${videoUrl}`);
             } catch (videoError) {
               logger.error(`Error uploading video:`, videoError);
             }
@@ -1232,6 +1263,7 @@ router.post("/automation/bulk-import", requireRole("admin"), async (req, res): P
             source: 'email_automation',
             sourceEmail: senderEmail,
             sourceEmailAccountId: account.id,
+            sourceMessageId: email.messageId, // 🔥 Store messageId to prevent duplicates
             firstName,
             lastName,
             email: senderEmail,
@@ -1279,7 +1311,7 @@ router.post("/automation/bulk-import", requireRole("admin"), async (req, res): P
             emailAccountId: account.id,
             attachments: email.attachments.map((att: any) => ({
               filename: att.filename,
-              url: att.filename === resumeAttachment.filename ? resumeUploadResult.url : '',
+              url: att.filename === resumeAttachment.filename ? resumeUploadResult.url : (att.filename === videoAttachment?.filename ? videoUrl : ''),
               contentType: att.contentType,
               size: att.size,
             })),
