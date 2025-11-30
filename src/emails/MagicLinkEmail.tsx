@@ -11,12 +11,12 @@ export const MagicLinkEmail = ({
   firstName,
   magicLink,
 }: MagicLinkEmailProps) => {
-  const previewText = "Sign in to YTFCS ATS";
+  const previewText = "Sign in to Arista ATS";
 
   return (
     <EmailLayout preview={previewText}>
       <Heading className="mx-0 my-[30px] p-0 text-center font-normal text-[24px] text-black">
-        Sign In to YTFCS ATS
+        Sign In to Arista ATS
       </Heading>
 
       <Text className="text-[14px] text-black leading-6">

@@ -290,7 +290,7 @@ export const sendInterviewNotificationEmail = async (options: {
       meetingPassword,
       interviewerNames,
       isInstant,
-      companyName: companyName || process.env.COMPANY_NAME || 'YTFCS',
+      companyName: companyName || process.env.COMPANY_NAME || 'Arista',
     })
   );
 

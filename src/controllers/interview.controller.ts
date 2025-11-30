@@ -171,7 +171,7 @@ export const createInterview = asyncHandler(
           : [];
 
         // Get company name from client
-        let companyName = process.env.COMPANY_NAME || 'YTFCS';
+        let companyName = process.env.COMPANY_NAME || 'Arista';
         if (job.clientId) {
           try {
             const client = await clientService.findById(job.clientId);

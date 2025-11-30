@@ -11,7 +11,7 @@ export const PasswordResetEmail = ({
   firstName,
   resetUrl,
 }: PasswordResetEmailProps) => {
-  const previewText = "Reset your YTFCS ATS password";
+  const previewText = "Reset your Arista ATS password";
 
   return (
     <EmailLayout preview={previewText}>
@@ -24,7 +24,7 @@ export const PasswordResetEmail = ({
       </Text>
 
       <Text className="text-[14px] text-black leading-6">
-        We received a request to reset your password for your YTFCS ATS account.
+        We received a request to reset your password for your Arista ATS account.
         Click the button below to create a new password.
       </Text>
 

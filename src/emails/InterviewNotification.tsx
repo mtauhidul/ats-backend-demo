@@ -27,7 +27,7 @@ export const InterviewNotification = ({
   meetingPassword,
   interviewerNames,
   isInstant = false,
-  companyName = 'YTFCS',
+  companyName = 'Arista',
 }: InterviewNotificationProps) => {
   const scheduledDate = new Date(scheduledAt);
   const formattedDate = scheduledDate.toLocaleDateString("en-US", {

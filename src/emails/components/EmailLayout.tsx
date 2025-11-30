@@ -17,7 +17,7 @@ interface EmailLayoutProps {
   companyName?: string;
 }
 
-export const EmailLayout = ({ children, preview, companyName = process.env.COMPANY_NAME || 'YTFCS ATS' }: EmailLayoutProps) => {
+export const EmailLayout = ({ children, preview, companyName = process.env.COMPANY_NAME || 'Arista ATS' }: EmailLayoutProps) => {
   return (
     <Html>
       <Head />

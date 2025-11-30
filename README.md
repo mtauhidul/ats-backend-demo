@@ -1,6 +1,6 @@
-# ATS Backend API
+# Arista ATS Backend API
 
-Production-ready Node.js/Express backend for the Applicant Tracking System.
+Production-ready Node.js/Express backend for Arista ATS (Applicant Tracking System).
 
 ## 🚀 Quick Start
 

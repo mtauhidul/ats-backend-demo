@@ -1,7 +1,7 @@
 {
   "name": "ats-backend",
   "version": "1.0.0",
-  "description": "ATS Backend - Applicant Tracking System API",
+  "description": "Arista ATS Backend - Applicant Tracking System API",
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",

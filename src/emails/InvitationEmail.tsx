@@ -15,12 +15,12 @@ export const InvitationEmail = ({
   invitedBy,
   inviteUrl,
 }: InvitationEmailProps) => {
-  const previewText = `Join ${companyName} on YTFCS ATS`;
+  const previewText = `Join ${companyName} on Arista ATS`;
 
   return (
     <EmailLayout preview={previewText}>
       <Heading className="mx-0 my-[30px] p-0 text-center font-normal text-[24px] text-black">
-        Join <strong>{companyName}</strong> on <strong>YTFCS ATS</strong>
+        Join <strong>{companyName}</strong> on <strong>Arista ATS</strong>
       </Heading>
 
       <Text className="text-[14px] text-black leading-6">
@@ -29,7 +29,7 @@ export const InvitationEmail = ({
 
       <Text className="text-[14px] text-black leading-6">
         <strong>{invitedBy}</strong> has invited you to join{" "}
-        <strong>{companyName}</strong> on YTFCS ATS.
+        <strong>{companyName}</strong> on Arista ATS.
       </Text>
 
       <div
@@ -42,7 +42,7 @@ export const InvitationEmail = ({
         }}
       >
         <Text className="text-[14px] text-[#1e40af] m-0">
-          YTFCS ATS is an applicant tracking system that helps teams manage
+          Arista ATS is an applicant tracking system that helps teams manage
           their hiring process efficiently. You can track candidates, schedule
           interviews, and collaborate with your team all in one place.
         </Text>
