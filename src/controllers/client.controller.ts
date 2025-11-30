@@ -126,6 +126,7 @@ export const createClient = asyncHandler(
     const clientId = await clientService.create({
       ...data,
       contacts,
+      status: data.status || 'active', // Default to active if not provided
       createdBy: req.user?.id,
       createdAt: new Date(),
       updatedAt: new Date(),
