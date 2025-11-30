@@ -10,6 +10,7 @@ import {
   userService,
 } from "../services/firestore";
 import openaiService from "../services/openai.service";
+import resendService from "../services/resend.service";
 import {
   ApproveApplicationInput,
   BulkUpdateStatusInput,
@@ -263,6 +264,21 @@ export const createApplication = asyncHandler(
     logger.info(
       `Application created: ${application.email} ${jobInfo} via ${data.source}`
     );
+
+    // Send confirmation email to applicant (fire-and-forget)
+    if (data.source === 'direct_apply' && job) {
+      const candidateName = `${application.firstName} ${application.lastName}`;
+      resendService.sendApplicationConfirmation(
+        application.email,
+        candidateName,
+        job.title,
+        { applicationId, jobId: data.jobId }
+      ).then(() => {
+        logger.info(`Confirmation email sent to ${application.email}`);
+      }).catch((err) => {
+        logger.error(`Failed to send confirmation email to ${application.email}:`, err);
+      });
+    }
 
     // Log activity
     if (req.user?.id) {

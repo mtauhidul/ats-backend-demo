@@ -147,7 +147,7 @@ Thank you for applying for the ${jobTitle} position. We have received your appli
 We will contact you if your qualifications match our requirements.
 
 Best regards,
-${config.resend.fromName}
+Arista ATS
     `.trim();
 
     return this.sendEmail({
