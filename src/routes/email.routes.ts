@@ -383,14 +383,12 @@ const checkEmailsForAllAccounts = async () => {
               automationState.totalEmailsProcessed++;
               automationState.totalRepliesStored++;
               
-            } else if (account.autoProcessResumes && email.attachments.length > 0) {
+              } else if (account.autoProcessResumes && email.attachments.length > 0) {
               // **HANDLE RESUME/APPLICATION EMAIL**
               logger.info(`Processing resume email from: ${senderEmail}`);
               
-              // Get applicationService
-              const { applicationService } = require('../services/firestore');
-              
-              // ✅ STEP 1: Check applications collection for duplicates (not just candidates)
+              // Get applicationService and jobService
+              const { applicationService, jobService } = require('../services/firestore');              // ✅ STEP 1: Check applications collection for duplicates (not just candidates)
               // Also check by messageId to prevent race conditions
               const existingApplications = await applicationService.find([
                 { field: 'email', operator: '==', value: senderEmail }
@@ -426,19 +424,12 @@ const checkEmailsForAllAccounts = async () => {
                 continue;
               }
               
-              // Extract video attachment
-              const videoAttachment = email.attachments.find((att: any) =>
-                att.contentType.includes('video') ||
-                att.filename.toLowerCase().endsWith('.mp4') ||
-                att.filename.toLowerCase().endsWith('.mov') ||
-                att.filename.toLowerCase().endsWith('.avi') ||
-                att.filename.toLowerCase().endsWith('.webm') ||
-                att.filename.toLowerCase().endsWith('.mkv')
-              );
+              // Extract video attachment or link using comprehensive video handler
+              const { extractVideoFromEmail } = require('../utils/videoHandler');
+              const videoResult = extractVideoFromEmail(email.attachments, email.body, email.bodyHtml);
               
-              // Extract video link from body
-              const videoLinkMatch = email.body.match(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|vimeo\.com\/|loom\.com\/share\/)[^\s]+)/i);
-              const videoLink = videoLinkMatch ? videoLinkMatch[0] : null;
+              const videoAttachment = videoResult?.type === 'attachment' ? videoResult.value : null;
+              const videoLink = videoResult?.type === 'link' ? videoResult.url : null;
               
               try {
                 // ✅ STEP 2: Upload resume to Cloudinary via public API
@@ -544,6 +535,21 @@ const checkEmailsForAllAccounts = async () => {
                   continue;
                 }
                 
+                // ✅ STEP 4.5: Smart Job Matching
+                const { matchEmailToJob } = require('../utils/jobMatcher');
+                const matchedJobId = await matchEmailToJob(
+                  email.subject,
+                  email.body,
+                  email.date || new Date(),
+                  jobService
+                );
+                
+                if (matchedJobId) {
+                  logger.info(`🎯 Successfully matched email to job: ${matchedJobId}`);
+                } else {
+                  logger.info(`ℹ️  No job match found - application will be created without job association`);
+                }
+                
                 // ✅ STEP 5: Create application via applicationService with proper source
                 const applicationData: any = {
                   source: 'email_automation',
@@ -564,6 +570,11 @@ const checkEmailsForAllAccounts = async () => {
                   aiCheckStatus: parsedData ? 'completed' : 'pending',
                   aiCheckCompletedAt: parsedData ? new Date() : undefined,
                 };
+                
+                // Add job ID if matched
+                if (matchedJobId) {
+                  applicationData.jobId = matchedJobId;
+                }
                 
                 // Only add optional fields if they have actual data
                 if (parsedData?.personalInfo?.phone) {
@@ -1050,6 +1061,7 @@ router.post("/automation/bulk-import", requireRole("admin"), async (req, res): P
       emailAccountService, 
       emailService, 
       applicationService,
+      jobService,
     } = require('../services/firestore');
 
     // Get account
@@ -1155,20 +1167,15 @@ router.post("/automation/bulk-import", requireRole("admin"), async (req, res): P
             resumeAttachment.filename
           );
 
-          // Extract video link from body
-          const videoLinkMatch = email.body.match(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|vimeo\.com\/|loom\.com\/share\/)[^\s]+)/i);
-          const videoLink = videoLinkMatch ? videoLinkMatch[0] : null;
-
+          // Extract video attachment or link using comprehensive video handler
+          const { extractVideoFromEmail } = require('../utils/videoHandler');
+          const videoResult = extractVideoFromEmail(email.attachments, email.body, email.bodyHtml);
+          
+          const videoAttachment = videoResult?.type === 'attachment' ? videoResult.value : null;
+          const videoLink = videoResult?.type === 'link' ? videoResult.url : null;
+          
           // Upload video if present
           let videoUrl = videoLink; // Use link if provided
-          const videoAttachment = email.attachments.find((att: any) =>
-            att.contentType.includes('video') ||
-            att.filename.toLowerCase().endsWith('.mp4') ||
-            att.filename.toLowerCase().endsWith('.mov') ||
-            att.filename.toLowerCase().endsWith('.avi') ||
-            att.filename.toLowerCase().endsWith('.webm') ||
-            att.filename.toLowerCase().endsWith('.mkv')
-          );
 
           if (videoAttachment && !videoUrl) {
             try {
@@ -1258,6 +1265,19 @@ router.post("/automation/bulk-import", requireRole("admin"), async (req, res): P
             continue;
           }
 
+          // Smart Job Matching
+          const { matchEmailToJob } = require('../utils/jobMatcher');
+          const matchedJobId = await matchEmailToJob(
+            email.subject,
+            email.body,
+            email.date || new Date(),
+            jobService
+          );
+          
+          if (matchedJobId) {
+            logger.info(`🎯 Successfully matched email to job: ${matchedJobId}`);
+          }
+          
           // Create application
           const applicationData: any = {
             source: 'email_automation',
@@ -1278,6 +1298,11 @@ router.post("/automation/bulk-import", requireRole("admin"), async (req, res): P
             aiCheckStatus: parsedData ? 'completed' : 'pending',
             aiCheckCompletedAt: parsedData ? new Date() : undefined,
           };
+          
+          // Add job ID if matched
+          if (matchedJobId) {
+            applicationData.jobId = matchedJobId;
+          }
           
           // Only add optional fields if they have actual data
           if (parsedData?.personalInfo?.phone) {

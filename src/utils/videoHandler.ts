@@ -197,11 +197,147 @@ export function extractVideoAttachments(attachments: any[]): Array<{
     });
 }
 
+/**
+ * Comprehensive video link extraction from email body
+ * Extracts links from various video platforms and cloud storage services
+ * Supports:
+ * - YouTube (youtube.com, youtu.be)
+ * - Vimeo
+ * - Loom
+ * - Google Drive (including Gmail attachment conversions)
+ * - Dropbox
+ * - OneDrive
+ * - Direct video file URLs (.mp4, .mov, .avi, etc.)
+ * - WeTransfer
+ * - Box.com
+ * - iCloud
+ */
+export function extractVideoLinks(body: string, bodyHtml?: string): string[] {
+  if (!body && !bodyHtml) return [];
+  
+  const videoLinks: Set<string> = new Set();
+  const textToSearch = `${body || ''} ${bodyHtml || ''}`;
+  
+  // Define regex patterns for various video sources
+  const patterns = [
+    // YouTube
+    /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([a-zA-Z0-9_-]{11})[^\s<>"']*/gi,
+    
+    // Vimeo
+    /https?:\/\/(?:www\.)?vimeo\.com\/(?:video\/)?(\d+)[^\s<>"']*/gi,
+    
+    // Loom
+    /https?:\/\/(?:www\.)?loom\.com\/share\/[a-zA-Z0-9]+[^\s<>"']*/gi,
+    
+    // Google Drive (including Gmail large file conversions)
+    /https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=|uc\?export=download&id=)([a-zA-Z0-9_-]+)[^\s<>"']*/gi,
+    
+    // Dropbox
+    /https?:\/\/(?:www\.)?dropbox\.com\/(?:s\/|sh\/|scl\/fi\/)[a-zA-Z0-9_\-\/\?=&]+[^\s<>"']*/gi,
+    
+    // OneDrive / SharePoint
+    /https?:\/\/(?:[a-zA-Z0-9-]+\.)?(?:sharepoint\.com|1drv\.ms|onedrive\.live\.com)\/[^\s<>"']+/gi,
+    
+    // WeTransfer
+    /https?:\/\/(?:www\.)?(?:wetransfer\.com|we\.tl)\/[^\s<>"']+/gi,
+    
+    // Box.com
+    /https?:\/\/(?:www\.)?(?:app\.)?box\.com\/s\/[a-zA-Z0-9]+[^\s<>"']*/gi,
+    
+    // iCloud
+    /https?:\/\/(?:www\.)?icloud\.com\/[^\s<>"']+/gi,
+    
+    // Direct video file URLs (with common video extensions)
+    /https?:\/\/[^\s<>"']+\.(?:mp4|mov|avi|wmv|flv|webm|mkv|m4v|3gp|ogv|mpeg|mpg)(?:\?[^\s<>"']*)?/gi,
+    
+    // Generic cloud storage patterns (catch-all for other services)
+    /https?:\/\/[^\s<>"']*(?:upload|download|file|video|media|share|attachment)[^\s<>"']*\.(?:mp4|mov|avi|wmv|flv|webm|mkv)/gi,
+  ];
+  
+  // Extract links using all patterns
+  for (const pattern of patterns) {
+    const matches = textToSearch.matchAll(pattern);
+    for (const match of matches) {
+      let link = match[0].trim();
+      
+      // Clean up the link (remove trailing punctuation, HTML entities, etc.)
+      link = link.replace(/[.,;:!?)\]}>]+$/, '');
+      link = link.replace(/&amp;/g, '&');
+      link = link.replace(/&quot;/g, '');
+      link = link.replace(/&#x27;/g, '');
+      
+      // Validate it's a proper URL
+      if (link.startsWith('http://') || link.startsWith('https://')) {
+        videoLinks.add(link);
+      }
+    }
+  }
+  
+  return Array.from(videoLinks);
+}
+
+/**
+ * Extract the best video URL from email
+ * Priority: Direct video attachment > Video link in body
+ * Returns null if no video found
+ */
+export function extractVideoFromEmail(
+  attachments: any[],
+  body: string,
+  bodyHtml?: string
+): { type: 'attachment' | 'link'; value: any; url?: string } | null {
+  // Priority 1: Check for video attachment
+  const videoAttachments = extractVideoAttachments(attachments);
+  if (videoAttachments.length > 0) {
+    return {
+      type: 'attachment',
+      value: videoAttachments[0].attachment,
+    };
+  }
+  
+  // Priority 2: Check for video links in body
+  const videoLinks = extractVideoLinks(body, bodyHtml);
+  if (videoLinks.length > 0) {
+    return {
+      type: 'link',
+      value: videoLinks[0],
+      url: videoLinks[0],
+    };
+  }
+  
+  return null;
+}
+
+/**
+ * Check if a URL is a video link
+ */
+export function isVideoLink(url: string): boolean {
+  if (!url) return false;
+  
+  const videoLinkPatterns = [
+    /youtube\.com|youtu\.be/i,
+    /vimeo\.com/i,
+    /loom\.com/i,
+    /drive\.google\.com/i,
+    /dropbox\.com/i,
+    /sharepoint\.com|1drv\.ms|onedrive\.live\.com/i,
+    /wetransfer\.com|we\.tl/i,
+    /box\.com/i,
+    /icloud\.com/i,
+    /\.(?:mp4|mov|avi|wmv|flv|webm|mkv|m4v|3gp|ogv|mpeg|mpg)/i,
+  ];
+  
+  return videoLinkPatterns.some(pattern => pattern.test(url));
+}
+
 export default {
   isVideoFile,
   getVideoMimeType,
   categorizeVideoFile,
   uploadVideoToCloudinary,
   validateVideoSize,
-  extractVideoAttachments
+  extractVideoAttachments,
+  extractVideoLinks,
+  extractVideoFromEmail,
+  isVideoLink
 };
