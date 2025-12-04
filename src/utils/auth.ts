@@ -34,8 +34,10 @@ export const comparePassword = async (password: string, hash: string): Promise<b
  */
 export const generateAccessToken = (payload: TokenPayload): string => {
   // If JWT_EXPIRES_IN is 'never', don't set expiration
-  const options: jwt.SignOptions = JWT_EXPIRES_IN === 'never' ? {} : { expiresIn: JWT_EXPIRES_IN };
-  return jwt.sign(payload, JWT_SECRET, options);
+  if (JWT_EXPIRES_IN === 'never') {
+    return jwt.sign(payload, JWT_SECRET);
+  }
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
 };
 
 /**
@@ -43,8 +45,10 @@ export const generateAccessToken = (payload: TokenPayload): string => {
  */
 export const generateRefreshToken = (payload: TokenPayload): string => {
   // If REFRESH_TOKEN_EXPIRES_IN is 'never', don't set expiration
-  const options: jwt.SignOptions = REFRESH_TOKEN_EXPIRES_IN === 'never' ? {} : { expiresIn: REFRESH_TOKEN_EXPIRES_IN };
-  return jwt.sign(payload, REFRESH_TOKEN_SECRET, options);
+  if (REFRESH_TOKEN_EXPIRES_IN === 'never') {
+    return jwt.sign(payload, REFRESH_TOKEN_SECRET);
+  }
+  return jwt.sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN } as jwt.SignOptions);
 };
 
 /**
