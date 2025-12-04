@@ -13,11 +13,16 @@ export interface SendEmailOptions {
   bodyHtml?: string;
   cc?: string[];
   bcc?: string[];
+  replyTo?: string;
   attachments?: Array<{
     filename: string;
     content: Buffer | string;
     contentType?: string;
   }>;
+
+  // Email threading support
+  inReplyTo?: string;
+  references?: string | string[];
 
   // For tracking in database
   candidateId?: string;
@@ -43,7 +48,10 @@ class ResendService {
         bodyHtml,
         cc,
         bcc,
+        replyTo,
         attachments,
+        inReplyTo,
+        references,
         candidateId,
         applicationId,
         jobId,
@@ -52,20 +60,39 @@ class ResendService {
         sentBy,
       } = options;
 
-      // Send via Resend
-      const result = await resend.emails.send({
+      // Prepare email payload
+      const emailPayload: any = {
         from: `${config.resend.fromName} <${config.resend.fromEmail}>`,
         to: Array.isArray(to) ? to : [to],
         subject,
         text: body,
         html: bodyHtml || this.textToHtml(body),
-        cc,
-        bcc,
-        attachments: attachments?.map((att) => ({
+      };
+
+      // Add optional fields
+      if (cc) emailPayload.cc = cc;
+      if (bcc) emailPayload.bcc = bcc;
+      if (replyTo) emailPayload.replyTo = replyTo;
+      if (attachments) {
+        emailPayload.attachments = attachments.map((att) => ({
           filename: att.filename,
           content: att.content,
-        })),
-      });
+        }));
+      }
+
+      // Add email threading headers
+      if (inReplyTo || references) {
+        emailPayload.headers = {};
+        if (inReplyTo) emailPayload.headers['In-Reply-To'] = inReplyTo;
+        if (references) {
+          emailPayload.headers['References'] = Array.isArray(references)
+            ? references.join(' ')
+            : references;
+        }
+      }
+
+      // Send via Resend
+      const result = await resend.emails.send(emailPayload);
 
       if (!result.data?.id) {
         throw new Error("Failed to send email via Resend");
@@ -83,6 +110,8 @@ class ResendService {
         bodyHtml: bodyHtml || this.textToHtml(body),
         status: "sent",
         sentAt: new Date(),
+        inReplyTo,
+        threadId: inReplyTo || result.data.id,
         candidateId: candidateId || undefined,
         applicationId: applicationId || undefined,
         jobId: jobId || undefined,

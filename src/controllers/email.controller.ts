@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { emailService, emailAccountService } from "../services/firestore";
-import smtpService from "../services/smtp.service";
+import { emailService } from "../services/firestore";
+import resendService from "../services/resend.service";
 import { NotFoundError } from "../utils/errors";
 import {
   asyncHandler,
@@ -121,18 +121,18 @@ export const getEmailById = asyncHandler(
 );
 
 /**
- * Send new email via SMTP
+ * Send new email via Resend
  */
 export const sendEmail = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const {
-      from, // Email account to send from
       to,
       subject,
       body,
       bodyHtml,
       cc,
       bcc,
+      replyTo,
       candidateId,
       jobId,
       clientId,
@@ -142,67 +142,38 @@ export const sendEmail = asyncHandler(
       references, // For threading
     } = req.body;
 
-    // Get first active email account if 'from' not provided
-    let fromEmail = from;
-    if (!fromEmail) {
-      const activeAccounts = await emailAccountService.findActive();
-      if (activeAccounts.length === 0) {
-        throw new Error('No active email account found. Please configure an email account first.');
-      }
-      fromEmail = activeAccounts[0].email;
-    }
-
-    // Send email via SMTP
+    // Send email via Resend
     let result;
     try {
-      logger.info(`Attempting to send email via SMTP from ${fromEmail} to ${Array.isArray(to) ? to.join(', ') : to}`);
-      result = await smtpService.sendSMTPEmail({
-        from: fromEmail,
+      logger.info(`Attempting to send email via Resend to ${Array.isArray(to) ? to.join(', ') : to}`);
+      result = await resendService.sendEmail({
         to,
         subject,
-        html: bodyHtml || body,
-        text: body,
+        body: body || bodyHtml,
+        bodyHtml,
         cc,
         bcc,
+        replyTo,
         inReplyTo,
         references,
+        candidateId,
+        jobId,
+        clientId,
+        applicationId,
+        interviewId,
+        sentBy: req.user?.id,
       });
-      logger.info(`Email sent successfully via SMTP. MessageId: ${result.messageId}`);
-    } catch (smtpError: any) {
-      logger.error(`SMTP send failed: ${smtpError.message}`, smtpError);
-      throw new Error(`Failed to send email via SMTP: ${smtpError.message}`);
+      logger.info(`Email sent successfully via Resend. MessageId: ${result.id}`);
+    } catch (resendError: any) {
+      logger.error(`Resend send failed: ${resendError.message}`, resendError);
+      throw new Error(`Failed to send email via Resend: ${resendError.message}`);
     }
 
-    // Save to database
-    const emailId = await emailService.create({
-      direction: 'outbound',
-      from: fromEmail,
-      to: Array.isArray(to) ? to : [to],
-      cc,
-      bcc,
-      subject,
-      body: body || bodyHtml,
-      bodyHtml,
-      status: 'sent',
-      sentAt: new Date(),
-      messageId: result.messageId,
-      inReplyTo,
-      threadId: inReplyTo || result.messageId,
-      candidateId,
-      jobId,
-      clientId,
-      applicationId,
-      interviewId,
-      sentBy: req.user?.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as any);
-
     // Fetch the created email record
-    const email = await emailService.findById(emailId);
+    const email = await emailService.findById(result.emailId);
 
     logger.info(
-      `Email sent via SMTP: ${result.messageId} from ${fromEmail} to ${Array.isArray(to) ? to.join(", ") : to}`
+      `Email sent via Resend: ${result.id} to ${Array.isArray(to) ? to.join(", ") : to}`
     );
 
     // Log activity
@@ -211,10 +182,9 @@ export const sendEmail = asyncHandler(
         userId: req.user.id,
         action: "sent_email",
         resourceType: "email",
-        resourceId: emailId,
+        resourceId: result.emailId,
         resourceName: subject,
         metadata: {
-          from: fromEmail,
           to: Array.isArray(to) ? to : [to],
           candidateId,
           jobId,
