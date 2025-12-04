@@ -153,17 +153,25 @@ export const sendEmail = asyncHandler(
     }
 
     // Send email via SMTP
-    const result = await smtpService.sendSMTPEmail({
-      from: fromEmail,
-      to,
-      subject,
-      html: bodyHtml || body,
-      text: body,
-      cc,
-      bcc,
-      inReplyTo,
-      references,
-    });
+    let result;
+    try {
+      logger.info(`Attempting to send email via SMTP from ${fromEmail} to ${Array.isArray(to) ? to.join(', ') : to}`);
+      result = await smtpService.sendSMTPEmail({
+        from: fromEmail,
+        to,
+        subject,
+        html: bodyHtml || body,
+        text: body,
+        cc,
+        bcc,
+        inReplyTo,
+        references,
+      });
+      logger.info(`Email sent successfully via SMTP. MessageId: ${result.messageId}`);
+    } catch (smtpError: any) {
+      logger.error(`SMTP send failed: ${smtpError.message}`, smtpError);
+      throw new Error(`Failed to send email via SMTP: ${smtpError.message}`);
+    }
 
     // Save to database
     const emailId = await emailService.create({

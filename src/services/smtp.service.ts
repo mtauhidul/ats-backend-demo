@@ -26,17 +26,21 @@ export interface SMTPEmailOptions {
  */
 async function getSMTPConfig(emailAddress: string) {
   try {
+    logger.info(`Looking up SMTP config for: ${emailAddress}`);
     const accounts = await emailAccountService.find([
       { field: 'email', operator: '==', value: emailAddress }
     ]);
 
     if (accounts.length === 0) {
+      logger.error(`No email account found for: ${emailAddress}`);
       throw new Error(`No email account found for: ${emailAddress}`);
     }
 
     const account = accounts[0];
+    logger.info(`Found email account: ${account.email} (Active: ${account.isActive})`);
 
     if (!account.isActive) {
+      logger.error(`Email account is not active: ${emailAddress}`);
       throw new Error(`Email account is not active: ${emailAddress}`);
     }
 
@@ -61,7 +65,7 @@ async function getSMTPConfig(emailAddress: string) {
       }
     }
 
-    return {
+    const config = {
       host: smtpHost,
       port: smtpPort,
       secure: account.smtpSecure !== undefined ? account.smtpSecure : (smtpPort === 465), // true for 465, false for other ports
@@ -72,6 +76,10 @@ async function getSMTPConfig(emailAddress: string) {
       from: account.email,
       accountId: account.id,
     };
+
+    logger.info(`SMTP Config: ${smtpHost}:${smtpPort} (secure: ${config.secure})`);
+    
+    return config;
   } catch (error) {
     logger.error('Error getting SMTP config:', error);
     throw error;
@@ -91,7 +99,8 @@ export async function sendSMTPEmail(options: SMTPEmailOptions): Promise<{ messag
     const smtpConfig = await getSMTPConfig(fromEmail);
 
     // Create transporter
-    const transporter = nodemailer.createTransport({
+    logger.info(`Creating SMTP transporter for ${smtpConfig.host}:${smtpConfig.port}`);
+    const transporter = nodemailer.createTransporter({
       host: smtpConfig.host,
       port: smtpConfig.port,
       secure: smtpConfig.secure,
@@ -99,11 +108,19 @@ export async function sendSMTPEmail(options: SMTPEmailOptions): Promise<{ messag
       tls: {
         rejectUnauthorized: false, // Allow self-signed certificates
       },
+      debug: true, // Enable debug mode
+      logger: true, // Log to console
     });
 
     // Verify connection
-    await transporter.verify();
-    logger.info(`SMTP connection verified for ${smtpConfig.host}:${smtpConfig.port}`);
+    try {
+      logger.info(`Verifying SMTP connection...`);
+      await transporter.verify();
+      logger.info(`✅ SMTP connection verified for ${smtpConfig.host}:${smtpConfig.port}`);
+    } catch (verifyError: any) {
+      logger.error(`❌ SMTP verification failed: ${verifyError.message}`);
+      throw new Error(`SMTP connection failed: ${verifyError.message}`);
+    }
 
     // Prepare email
     const mailOptions: any = {
