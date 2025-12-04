@@ -124,6 +124,12 @@ CRITICAL EXTRACTION RULES:
 
 1. PERSONAL INFO (MANDATORY):
    - Extract first name and last name (clean up ALL CAPS, weird spacing like "MMOOINNNUURR" → "Moinur")
+   - For names with multiple parts (e.g., "MIR TAUHIDUL ISLAM"):
+     * firstName = First part only (e.g., "Mir")
+     * lastName = Last part only (e.g., "Islam")
+     * Middle names are NOT included in firstName or lastName
+   - Example: "JOHN MICHAEL SMITH" → firstName: "John", lastName: "Smith"
+   - Example: "MIR TAUHIDUL ISLAM" → firstName: "Mir", lastName: "Islam"
    - Find email (pattern: contains @)
    - Find phone (any format: +880-xxx, 09xxx, etc.)
    - Extract full address if present

@@ -35,13 +35,6 @@ export const config = {
     scoringModel: process.env.OPENAI_SCORING_MODEL || "gpt-4o",
   },
 
-  // Affinda Resume Parser
-  affinda: {
-    apiToken: process.env.AFFINDA_API_TOKEN || "",
-    workspace: process.env.AFFINDA_WORKSPACE || "",
-    useAffinda: process.env.USE_AFFINDA_PARSER === "true",
-  },
-
   // Adobe PDF Services (Fallback for PDF text extraction)
   adobe: {
     clientId: process.env.ADOBE_CLIENT_ID || "",

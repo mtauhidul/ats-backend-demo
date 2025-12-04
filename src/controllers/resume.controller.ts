@@ -1,7 +1,5 @@
 import { Request, Response } from "express";
-import { config } from "../config";
 import { applicationService, jobService } from "../services/firestore";
-import affindaService from "../services/affinda.service";
 import cloudinaryService from "../services/cloudinary.service";
 import openaiService from "../services/openai.service";
 import {
@@ -42,33 +40,12 @@ export const parseResume = asyncHandler(
 
     logger.info(`Parsing resume: ${req.file.originalname}`);
 
-    // Parse resume using Affinda (primary) or OpenAI (fallback)
-    let parsedData;
-
-    if (config.affinda.useAffinda && config.affinda.apiToken) {
-      try {
-        logger.info("Using Affinda parser (primary)");
-        parsedData = await affindaService.parseResume(
-          req.file.buffer,
-          req.file.originalname
-        );
-      } catch (affindaError) {
-        logger.warn(
-          "Affinda parsing failed, falling back to OpenAI:",
-          affindaError
-        );
-        parsedData = await openaiService.parseResumeFromFile(
-          req.file.buffer,
-          req.file.mimetype
-        );
-      }
-    } else {
-      logger.info("Using OpenAI parser");
-      parsedData = await openaiService.parseResumeFromFile(
-        req.file.buffer,
-        req.file.mimetype
-      );
-    }
+    // Parse resume using OpenAI
+    logger.info("Using OpenAI parser");
+    const parsedData = await openaiService.parseResumeFromFile(
+      req.file.buffer,
+      req.file.mimetype
+    );
 
     // Filter data based on options
     const response: any = {
@@ -124,33 +101,12 @@ export const parseAndSaveResume = asyncHandler(
       `Parsing and saving resume: ${req.file.originalname} for job ${job.title}`
     );
 
-    // Parse resume using Affinda (primary) or OpenAI (fallback)
-    let parsedData;
-
-    if (config.affinda.useAffinda && config.affinda.apiToken) {
-      try {
-        logger.info("Using Affinda parser (primary)");
-        parsedData = await affindaService.parseResume(
-          req.file.buffer,
-          req.file.originalname
-        );
-      } catch (affindaError) {
-        logger.warn(
-          "Affinda parsing failed, falling back to OpenAI:",
-          affindaError
-        );
-        parsedData = await openaiService.parseResumeFromFile(
-          req.file.buffer,
-          req.file.mimetype
-        );
-      }
-    } else {
-      logger.info("Using OpenAI parser");
-      parsedData = await openaiService.parseResumeFromFile(
-        req.file.buffer,
-        req.file.mimetype
-      );
-    }
+    // Parse resume using OpenAI
+    logger.info("Using OpenAI parser");
+    const parsedData = await openaiService.parseResumeFromFile(
+      req.file.buffer,
+      req.file.mimetype
+    );
 
     // Validate that we got email from parsed data
     if (!parsedData.personalInfo?.email) {

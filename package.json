@@ -39,7 +39,6 @@
   },
   "dependencies": {
     "@adobe/pdfservices-node-sdk": "^4.1.0",
-    "@affinda/affinda": "^7.7.0",
     "@clerk/clerk-sdk-node": "^5.0.0",
     "@react-email/components": "^0.5.7",
     "@types/nodemailer": "^7.0.3",
