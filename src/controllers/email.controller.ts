@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { logActivity } from "../services/activity.service";
 import { emailService } from "../services/firestore";
 import resendService from "../services/resend.service";
 import { NotFoundError } from "../utils/errors";
@@ -8,7 +9,6 @@ import {
   successResponse,
 } from "../utils/helpers";
 import logger from "../utils/logger";
-import { logActivity } from "../services/activity.service";
 
 /**
  * Get all emails with filters and pagination
@@ -38,12 +38,14 @@ export const getEmails = asyncHandler(
     if (status) {
       allEmails = allEmails.filter((e: any) => e.status === status);
     }
-    
+
     // If both candidateId and jobId are provided, use OR logic
     if (candidateId && jobId) {
-      allEmails = allEmails.filter((e: any) => 
-        e.candidateId === candidateId || e.jobId === jobId ||
-        (e.candidateId === candidateId && e.jobId === jobId)
+      allEmails = allEmails.filter(
+        (e: any) =>
+          e.candidateId === candidateId ||
+          e.jobId === jobId ||
+          (e.candidateId === candidateId && e.jobId === jobId)
       );
     } else {
       if (candidateId) {
@@ -53,18 +55,21 @@ export const getEmails = asyncHandler(
         allEmails = allEmails.filter((e: any) => e.jobId === jobId);
       }
     }
-    
+
     if (applicationId) {
-      allEmails = allEmails.filter((e: any) => e.applicationId === applicationId);
+      allEmails = allEmails.filter(
+        (e: any) => e.applicationId === applicationId
+      );
     }
 
     if (search) {
       const searchLower = search.toLowerCase();
-      allEmails = allEmails.filter((e: any) =>
-        e.from?.toLowerCase().includes(searchLower) ||
-        e.to?.some((t: string) => t.toLowerCase().includes(searchLower)) ||
-        e.subject?.toLowerCase().includes(searchLower) ||
-        e.body?.toLowerCase().includes(searchLower)
+      allEmails = allEmails.filter(
+        (e: any) =>
+          e.from?.toLowerCase().includes(searchLower) ||
+          e.to?.some((t: string) => t.toLowerCase().includes(searchLower)) ||
+          e.subject?.toLowerCase().includes(searchLower) ||
+          e.body?.toLowerCase().includes(searchLower)
       );
     }
 
@@ -145,7 +150,9 @@ export const sendEmail = asyncHandler(
     // Send email via Resend
     let result;
     try {
-      logger.info(`Attempting to send email via Resend to ${Array.isArray(to) ? to.join(', ') : to}`);
+      logger.info(
+        `Attempting to send email via Resend to ${Array.isArray(to) ? to.join(", ") : to}`
+      );
       result = await resendService.sendEmail({
         to,
         subject,
@@ -163,10 +170,14 @@ export const sendEmail = asyncHandler(
         interviewId,
         sentBy: req.user?.id,
       });
-      logger.info(`Email sent successfully via Resend. MessageId: ${result.id}`);
+      logger.info(
+        `Email sent successfully via Resend. MessageId: ${result.id}`
+      );
     } catch (resendError: any) {
       logger.error(`Resend send failed: ${resendError.message}`, resendError);
-      throw new Error(`Failed to send email via Resend: ${resendError.message}`);
+      throw new Error(
+        `Failed to send email via Resend: ${resendError.message}`
+      );
     }
 
     // Fetch the created email record
@@ -227,7 +238,9 @@ export const updateDraft = asyncHandler(
     const updates = req.body;
 
     const allEmails = await emailService.find([]);
-    const email = allEmails.find((e: any) => e.id === id && e.status === "draft");
+    const email = allEmails.find(
+      (e: any) => e.id === id && e.status === "draft"
+    );
 
     if (!email) {
       throw new NotFoundError("Draft not found");
@@ -250,7 +263,9 @@ export const sendDraft = asyncHandler(
     const { id } = req.params;
 
     const allEmails = await emailService.find([]);
-    const email = allEmails.find((e: any) => e.id === id && e.status === "draft");
+    const email = allEmails.find(
+      (e: any) => e.id === id && e.status === "draft"
+    );
 
     if (!email) {
       throw new NotFoundError("Draft not found");
@@ -309,7 +324,10 @@ export const getEmailThread = asyncHandler(
     const allEmails = await emailService.find([]);
     const emails = allEmails
       .filter((e: any) => e.threadId === threadId)
-      .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      .sort(
+        (a: any, b: any) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
 
     successResponse(res, emails, "Email thread retrieved successfully");
   }
@@ -325,7 +343,10 @@ export const getCandidateEmails = asyncHandler(
     const allEmails = await emailService.find([]);
     const emails = allEmails
       .filter((e: any) => e.candidateId === candidateId)
-      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
       .slice(0, 50);
 
     successResponse(res, emails, "Candidate emails retrieved successfully");
@@ -367,7 +388,9 @@ export const getInboundEmails = asyncHandler(
       if (search) {
         const searchLower = search.toLowerCase();
         const matchesFrom = email.from?.toLowerCase().includes(searchLower);
-        const matchesSubject = email.subject?.toLowerCase().includes(searchLower);
+        const matchesSubject = email.subject
+          ?.toLowerCase()
+          .includes(searchLower);
         const matchesBody = email.body?.toLowerCase().includes(searchLower);
         if (!matchesFrom && !matchesSubject && !matchesBody) return false;
       }
@@ -414,7 +437,7 @@ export const getInboundEmails = asyncHandler(
 export const getEmailStats = asyncHandler(
   async (_req: Request, res: Response): Promise<void> => {
     const allEmails = await emailService.find([]);
-    
+
     const totalEmails = allEmails.length;
     const sentEmails = allEmails.filter(
       (e: any) => e.direction === "outbound" && e.status === "sent"
@@ -423,10 +446,15 @@ export const getEmailStats = asyncHandler(
       (e: any) => e.direction === "inbound" && e.status === "received"
     ).length;
     const unmatchedEmails = allEmails.filter(
-      (e: any) => e.direction === "inbound" && e.status === "received" && !e.candidateId
+      (e: any) =>
+        e.direction === "inbound" && e.status === "received" && !e.candidateId
     ).length;
-    const draftEmails = allEmails.filter((e: any) => e.status === "draft").length;
-    const failedEmails = allEmails.filter((e: any) => e.status === "failed").length;
+    const draftEmails = allEmails.filter(
+      (e: any) => e.status === "draft"
+    ).length;
+    const failedEmails = allEmails.filter(
+      (e: any) => e.status === "failed"
+    ).length;
 
     successResponse(
       res,

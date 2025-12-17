@@ -83,10 +83,10 @@ class ResendService {
       // Add email threading headers
       if (inReplyTo || references) {
         emailPayload.headers = {};
-        if (inReplyTo) emailPayload.headers['In-Reply-To'] = inReplyTo;
+        if (inReplyTo) emailPayload.headers["In-Reply-To"] = inReplyTo;
         if (references) {
-          emailPayload.headers['References'] = Array.isArray(references)
-            ? references.join(' ')
+          emailPayload.headers["References"] = Array.isArray(references)
+            ? references.join(" ")
             : references;
         }
       }

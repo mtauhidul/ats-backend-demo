@@ -1,10 +1,17 @@
-import { Request, Response } from 'express';
-import { asyncHandler, successResponse } from '../utils/helpers';
-import { BadRequestError } from '../utils/errors';
-import { emailService, candidateService, messageService } from '../services/firestore';
-import logger from '../utils/logger';
+import { Request, Response } from "express";
+import { Resend } from "resend";
+import { config } from "../config";
+import {
+  candidateService,
+  emailService,
+  messageService,
+} from "../services/firestore";
+import { BadRequestError } from "../utils/errors";
+import { asyncHandler, successResponse } from "../utils/helpers";
+import logger from "../utils/logger";
 
-const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET || '';
+const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET || "";
+const resend = new Resend(config.resend.apiKey);
 
 /**
  * Handle Resend webhook events
@@ -12,8 +19,8 @@ const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET || '';
  */
 export const handleResendWebhook = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const signature = req.headers['resend-signature'] as string;
-    
+    const signature = req.headers["resend-signature"] as string;
+
     // Verify webhook signature (if secret is configured)
     if (RESEND_WEBHOOK_SECRET && signature) {
       // TODO: Implement signature verification
@@ -21,43 +28,45 @@ export const handleResendWebhook = asyncHandler(
     }
 
     const event = req.body;
-    
+
     if (!event || !event.type) {
-      throw new BadRequestError('Invalid webhook payload');
+      throw new BadRequestError("Invalid webhook payload");
     }
 
-    logger.info(`Received Resend webhook: ${event.type}`, { eventId: event.data?.email_id });
+    logger.info(`Received Resend webhook: ${event.type}`, {
+      eventId: event.data?.email_id,
+    });
 
     switch (event.type) {
-      case 'email.sent':
+      case "email.sent":
         await handleEmailSent(event.data);
         break;
-      case 'email.delivered':
+      case "email.delivered":
         await handleEmailDelivered(event.data);
         break;
-      case 'email.delivery_delayed':
+      case "email.delivery_delayed":
         await handleEmailDelayed(event.data);
         break;
-      case 'email.complained':
+      case "email.complained":
         await handleEmailComplained(event.data);
         break;
-      case 'email.bounced':
+      case "email.bounced":
         await handleEmailBounced(event.data);
         break;
-      case 'email.opened':
+      case "email.opened":
         await handleEmailOpened(event.data);
         break;
-      case 'email.clicked':
+      case "email.clicked":
         await handleEmailClicked(event.data);
         break;
-      case 'email.received':
+      case "email.received":
         await handleEmailReceived(event.data);
         break;
       default:
         logger.warn(`Unhandled webhook event type: ${event.type}`);
     }
 
-    successResponse(res, { received: true }, 'Webhook processed');
+    successResponse(res, { received: true }, "Webhook processed");
   }
 );
 
@@ -66,13 +75,13 @@ export const handleResendWebhook = asyncHandler(
  */
 const handleEmailSent = async (data: any) => {
   const emailId = data.email_id;
-  
+
   if (emailId) {
     const allEmails = await emailService.find([]);
     const email = allEmails.find((e: any) => e.resendId === emailId);
     if (email) {
-      await emailService.update(email.id, { 
-        status: 'sent',
+      await emailService.update(email.id, {
+        status: "sent",
         sentAt: new Date(),
       } as any);
     }
@@ -84,13 +93,13 @@ const handleEmailSent = async (data: any) => {
  */
 const handleEmailDelivered = async (data: any) => {
   const emailId = data.email_id;
-  
+
   if (emailId) {
     const allEmails = await emailService.find([]);
     const email = allEmails.find((e: any) => e.resendId === emailId);
     if (email) {
-      await emailService.update(email.id, { 
-        status: 'delivered',
+      await emailService.update(email.id, {
+        status: "delivered",
         deliveredAt: new Date(),
       } as any);
     }
@@ -102,13 +111,13 @@ const handleEmailDelivered = async (data: any) => {
  */
 const handleEmailDelayed = async (data: any) => {
   const emailId = data.email_id;
-  
+
   if (emailId) {
     const allEmails = await emailService.find([]);
     const email = allEmails.find((e: any) => e.resendId === emailId);
     if (email) {
-      await emailService.update(email.id, { 
-        status: 'delayed',
+      await emailService.update(email.id, {
+        status: "delayed",
       } as any);
     }
   }
@@ -119,13 +128,13 @@ const handleEmailDelayed = async (data: any) => {
  */
 const handleEmailComplained = async (data: any) => {
   const emailId = data.email_id;
-  
+
   if (emailId) {
     const allEmails = await emailService.find([]);
     const email = allEmails.find((e: any) => e.resendId === emailId);
     if (email) {
-      await emailService.update(email.id, { 
-        status: 'complained',
+      await emailService.update(email.id, {
+        status: "complained",
       } as any);
       logger.warn(`Email marked as spam: ${emailId}`);
     }
@@ -137,13 +146,13 @@ const handleEmailComplained = async (data: any) => {
  */
 const handleEmailBounced = async (data: any) => {
   const emailId = data.email_id;
-  
+
   if (emailId) {
     const allEmails = await emailService.find([]);
     const email = allEmails.find((e: any) => e.resendId === emailId);
     if (email) {
-      await emailService.update(email.id, { 
-        status: 'bounced',
+      await emailService.update(email.id, {
+        status: "bounced",
         bouncedAt: new Date(),
       } as any);
       logger.warn(`Email bounced: ${emailId}`);
@@ -156,12 +165,12 @@ const handleEmailBounced = async (data: any) => {
  */
 const handleEmailOpened = async (data: any) => {
   const emailId = data.email_id;
-  
+
   if (emailId) {
     const allEmails = await emailService.find([]);
     const email = allEmails.find((e: any) => e.resendId === emailId);
     if (email) {
-      await emailService.update(email.id, { 
+      await emailService.update(email.id, {
         openedAt: new Date(),
         openCount: (email.openCount || 0) + 1,
       } as any);
@@ -174,12 +183,12 @@ const handleEmailOpened = async (data: any) => {
  */
 const handleEmailClicked = async (data: any) => {
   const emailId = data.email_id;
-  
+
   if (emailId) {
     const allEmails = await emailService.find([]);
     const email = allEmails.find((e: any) => e.resendId === emailId);
     if (email) {
-      await emailService.update(email.id, { 
+      await emailService.update(email.id, {
         clickedAt: new Date(),
         clickCount: (email.clickCount || 0) + 1,
       } as any);
@@ -196,43 +205,90 @@ const handleEmailReceived = async (data: any) => {
     const emailId = data.email_id;
 
     if (!emailId) {
-      logger.error('No email_id in received event');
+      logger.error("No email_id in received event");
       return;
     }
 
-    // Extract email data from the webhook payload
-    // Resend inbound webhook payload structure
-    const fromEmail = data.from || data.from_email;
-    const toEmail = data.to || data.to_email;
-    const subject = data.subject || 'No Subject';
-    const textBody = data.text || data.body || '';
-    const htmlBody = data.html || '';
+    logger.info(
+      `Fetching full email content from Resend API for email_id: ${emailId}`
+    );
+
+    // Fetch the full email content from Resend API
+    // Webhook only contains metadata, not the actual email body
+    const { data: emailData, error: resendError } =
+      await resend.emails.receiving.get(emailId);
+
+    if (resendError || !emailData) {
+      logger.error("Failed to fetch email from Resend API:", resendError);
+      return;
+    }
+
+    // Extract email data from the API response
+    const fromEmail = emailData.from;
+    const toEmail = emailData.to;
+    const subject = emailData.subject || "No Subject";
+    const textBody = emailData.text || "";
+    const htmlBody = emailData.html || "";
 
     // Extract metadata
-    const messageId = data.message_id || data.messageId;
-    const inReplyTo = data.in_reply_to || data.inReplyTo;
+    const messageId = emailData.message_id;
+    const inReplyTo =
+      emailData.headers?.["in-reply-to"] || emailData.headers?.["In-Reply-To"];
+    const references =
+      emailData.headers?.["references"] || emailData.headers?.["References"];
 
-    // Extract attachments if present
-    const attachments = data.attachments || [];
-    const processedAttachments = attachments.map((att: any) => ({
-      filename: att.filename || att.name,
-      url: att.url || att.downloadUrl,
-      contentType: att.contentType || att.content_type || 'application/octet-stream',
-      size: att.size || 0,
-    }));
+    // Fetch attachments with download URLs
+    let processedAttachments: any[] = [];
+    const attachmentMetadata = emailData.attachments || [];
 
-    logger.info(`Received email from ${fromEmail} to ${toEmail}`, {
-      subject,
-      hasAttachments: attachments.length > 0,
-      attachmentCount: attachments.length,
-      messageId,
-      inReplyTo,
-    });
+    if (attachmentMetadata.length > 0) {
+      logger.info(
+        `Fetching ${attachmentMetadata.length} attachment(s) from Resend API`
+      );
+
+      const { data: attachmentsList, error: attachmentsError } =
+        await resend.emails.receiving.attachments.list({
+          emailId: emailId,
+        });
+
+      if (attachmentsError) {
+        logger.error(
+          "Failed to fetch attachments from Resend API:",
+          attachmentsError
+        );
+      } else if (attachmentsList && attachmentsList.data) {
+        processedAttachments = attachmentsList.data.map((att: any) => ({
+          id: att.id,
+          filename: att.filename,
+          contentType: att.content_type,
+          contentDisposition: att.content_disposition,
+          contentId: att.content_id,
+          size: att.size,
+          downloadUrl: att.download_url,
+          expiresAt: att.expires_at,
+        }));
+        logger.info(
+          `Successfully fetched ${processedAttachments.length} attachment(s) with download URLs`
+        );
+      }
+    }
+
+    logger.info(
+      `Received email from ${fromEmail} to ${Array.isArray(toEmail) ? toEmail.join(", ") : toEmail}`,
+      {
+        subject,
+        hasAttachments: processedAttachments.length > 0,
+        attachmentCount: processedAttachments.length,
+        messageId,
+        inReplyTo,
+        references,
+      }
+    );
 
     // Try to find the candidate by email
     const allCandidates = await candidateService.find([]);
-    const candidate = allCandidates.find((c: any) => 
-      c.email?.toLowerCase() === fromEmail.toLowerCase()
+    const candidate = allCandidates.find(
+      (c: any) => c.email?.toLowerCase() === fromEmail.toLowerCase()
     );
 
     // Determine thread ID based on inReplyTo or messageId
@@ -251,13 +307,13 @@ const handleEmailReceived = async (data: any) => {
     if (candidate) {
       // Create an Email record for the inbound email
       const inboundEmailId = await emailService.create({
-        direction: 'inbound',
+        direction: "inbound",
         from: fromEmail,
         to: Array.isArray(toEmail) ? toEmail : [toEmail],
         subject,
         body: textBody,
         bodyHtml: htmlBody,
-        status: 'received',
+        status: "received",
         receivedAt: new Date(),
         resendId: emailId,
         candidateId: candidate.id,
@@ -277,17 +333,20 @@ const handleEmailReceived = async (data: any) => {
         body: textBody || htmlBody,
         from: fromEmail,
         to: Array.isArray(toEmail) ? toEmail[0] : toEmail,
-        direction: 'inbound',
-        status: 'received',
+        direction: "inbound",
+        status: "received",
         receivedAt: new Date(),
         emailId: emailId,
       } as any);
 
-      logger.info(`Created inbound email and message for candidate ${candidate.email}`, {
-        emailId: inboundEmailId,
-        candidateId: candidate.id,
-        threadId,
-      });
+      logger.info(
+        `Created inbound email and message for candidate ${candidate.email}`,
+        {
+          emailId: inboundEmailId,
+          candidateId: candidate.id,
+          threadId,
+        }
+      );
 
       // TODO: Notify assigned team member about the reply
       // This could send a real-time notification or email
@@ -297,13 +356,13 @@ const handleEmailReceived = async (data: any) => {
 
       // Store as unmatched email for manual review
       await emailService.create({
-        direction: 'inbound',
+        direction: "inbound",
         from: fromEmail,
         to: Array.isArray(toEmail) ? toEmail : [toEmail],
         subject,
         body: textBody,
         bodyHtml: htmlBody,
-        status: 'received',
+        status: "received",
         receivedAt: new Date(),
         resendId: emailId,
         messageId,
@@ -318,16 +377,16 @@ const handleEmailReceived = async (data: any) => {
         body: textBody || htmlBody,
         from: fromEmail,
         to: Array.isArray(toEmail) ? toEmail[0] : toEmail,
-        direction: 'inbound',
-        status: 'unmatched',
+        direction: "inbound",
+        status: "unmatched",
         receivedAt: new Date(),
         emailId: emailId,
       } as any);
 
-      logger.info('Stored unmatched inbound email for manual review');
+      logger.info("Stored unmatched inbound email for manual review");
     }
   } catch (error) {
-    logger.error('Error processing received email:', error);
+    logger.error("Error processing received email:", error);
   }
 };
 
@@ -337,70 +396,76 @@ const handleEmailReceived = async (data: any) => {
  */
 export const testWebhook = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    if (process.env.NODE_ENV === 'production') {
-      throw new BadRequestError('Test endpoint not available in production');
+    if (process.env.NODE_ENV === "production") {
+      throw new BadRequestError("Test endpoint not available in production");
     }
 
     const { type, emailId } = req.body;
 
     if (!type) {
-      throw new BadRequestError('Event type is required');
+      throw new BadRequestError("Event type is required");
     }
 
     const testEvent = {
       type,
       data: {
-        email_id: emailId || 'test-email-id',
-        from: 'test@example.com',
-        to: ['recipient@example.com'],
-        subject: 'Test Email',
-        text: 'This is a test email body',
+        email_id: emailId || "test-email-id",
+        from: "test@example.com",
+        to: ["recipient@example.com"],
+        subject: "Test Email",
+        text: "This is a test email body",
       },
     };
 
     // Process the test event by manually calling the handler
     const originalBody = req.body;
     req.body = testEvent;
-    
+
     try {
       const event = req.body;
-      
+
       if (!event || !event.type) {
-        throw new BadRequestError('Invalid webhook payload');
+        throw new BadRequestError("Invalid webhook payload");
       }
 
-      logger.info(`Test webhook: ${event.type}`, { eventId: event.data?.email_id });
+      logger.info(`Test webhook: ${event.type}`, {
+        eventId: event.data?.email_id,
+      });
 
       switch (event.type) {
-        case 'email.sent':
+        case "email.sent":
           await handleEmailSent(event.data);
           break;
-        case 'email.delivered':
+        case "email.delivered":
           await handleEmailDelivered(event.data);
           break;
-        case 'email.delivery_delayed':
+        case "email.delivery_delayed":
           await handleEmailDelayed(event.data);
           break;
-        case 'email.complained':
+        case "email.complained":
           await handleEmailComplained(event.data);
           break;
-        case 'email.bounced':
+        case "email.bounced":
           await handleEmailBounced(event.data);
           break;
-        case 'email.opened':
+        case "email.opened":
           await handleEmailOpened(event.data);
           break;
-        case 'email.clicked':
+        case "email.clicked":
           await handleEmailClicked(event.data);
           break;
-        case 'email.received':
+        case "email.received":
           await handleEmailReceived(event.data);
           break;
         default:
           logger.warn(`Unhandled webhook event type: ${event.type}`);
       }
 
-      successResponse(res, { received: true, test: true }, 'Test webhook processed');
+      successResponse(
+        res,
+        { received: true, test: true },
+        "Test webhook processed"
+      );
     } finally {
       req.body = originalBody;
     }
