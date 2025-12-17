@@ -151,10 +151,10 @@ router.patch("/:id", async (req, res) => {
 
     logger.info(`Email ${id} updated successfully`, { fields: Object.keys(filteredData) });
     
-    res.status(200).json({ message: 'Email updated successfully' });
+    return res.status(200).json({ message: 'Email updated successfully' });
   } catch (error: any) {
     logger.error('Error updating email:', error);
-    res.status(500).json({ error: 'Failed to update email' });
+    return res.status(500).json({ error: 'Failed to update email' });
   }
 });
 

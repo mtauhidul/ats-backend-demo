@@ -18,7 +18,7 @@ interface EmailSettings {
 /**
  * Get email settings (from email and from name)
  */
-export const getEmailSettings = async (req: Request, res: Response) => {
+export const getEmailSettings = async (_req: Request, res: Response) => {
   try {
     const db = getFirestoreDB();
     const settingsDoc = await db
@@ -39,10 +39,10 @@ export const getEmailSettings = async (req: Request, res: Response) => {
     }
 
     const settings = settingsDoc.data() as EmailSettings;
-    res.status(200).json(settings);
+    return res.status(200).json(settings);
   } catch (error: any) {
     logger.error('Error fetching email settings:', error);
-    res.status(500).json({ error: 'Failed to fetch email settings' });
+    return res.status(500).json({ error: 'Failed to fetch email settings' });
   }
 };
 
@@ -89,14 +89,14 @@ export const updateEmailSettings = async (req: Request, res: Response) => {
       logger.info('Email settings updated', { fromEmail, fromName, userId });
     }
 
-    res.status(200).json({ 
+    return res.status(200).json({ 
       message: 'Email settings updated successfully',
       fromEmail,
       fromName,
     });
   } catch (error: any) {
     logger.error('Error updating email settings:', error);
-    res.status(500).json({ error: 'Failed to update email settings' });
+    return res.status(500).json({ error: 'Failed to update email settings' });
   }
 };
 
