@@ -9,6 +9,7 @@ import {
 import { BadRequestError } from "../utils/errors";
 import { asyncHandler, successResponse } from "../utils/helpers";
 import logger from "../utils/logger";
+import { getEmailSettingsInternal } from "./emailSettings.controller";
 
 const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET || "";
 const resend = new Resend(config.resend.apiKey);
@@ -227,6 +228,25 @@ const handleEmailReceived = async (data: any) => {
     const fromEmail = emailData.from;
     const toEmail = emailData.to;
     const subject = emailData.subject || "No Subject";
+
+    // Get configured system email to check if this email is associated with our system
+    const emailSettings = await getEmailSettingsInternal();
+    const systemEmail = emailSettings.fromEmail.toLowerCase();
+
+    // Check if email is associated with our system email
+    // It should be either sent TO our system email, or in reply to our system email
+    const toEmails = Array.isArray(toEmail) ? toEmail : [toEmail];
+    const isToSystemEmail = toEmails.some((email: string) => 
+      email.toLowerCase() === systemEmail
+    );
+
+    if (!isToSystemEmail) {
+      logger.info(`Email not associated with system email (${systemEmail}), skipping storage`, {
+        from: fromEmail,
+        to: toEmails,
+      });
+      return;
+    }
     const textBody = emailData.text || "";
     const htmlBody = emailData.html || "";
 

@@ -3,6 +3,7 @@ import authRoutes from './auth.routes';
 import emailAccountRoutes from './emailAccount.routes';
 // import emailAutomationRoutes from './emailAutomation.routes'; // TODO: Reimplement with Firestore
 import emailTemplateRoutes from './emailTemplate.routes';
+import emailSettingsRoutes from './emailSettings.routes';
 import resumeRoutes from './resume.routes';
 import applicationRoutes from './application.routes';
 import candidateRoutes from './candidate.routes';
@@ -30,6 +31,7 @@ router.use('/team', teamMemberRoutes);
 router.use('/interviews', interviewRoutes);
 router.use('/emails', emailRoutes);
 router.use('/email-templates', emailTemplateRoutes);
+router.use('/email-settings', emailSettingsRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/messages', messageRoutes);
 router.use('/email-accounts', emailAccountRoutes);

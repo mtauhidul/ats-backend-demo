@@ -8,9 +8,9 @@ import { MagicLinkEmail } from '../emails/MagicLinkEmail';
 import { PasswordResetEmail } from '../emails/PasswordResetEmail';
 import { InterviewNotification } from '../emails/InterviewNotification';
 import * as React from 'react';
+import { getEmailSettingsInternal } from '../controllers/emailSettings.controller';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@yourdomain.com';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // Initialize Resend client
@@ -29,8 +29,12 @@ export interface EmailOptions {
  */
 export const sendEmail = async (options: EmailOptions): Promise<string | null> => {
   try {
+    // Get dynamic email settings from Firestore
+    const emailSettings = await getEmailSettingsInternal();
+    const fromEmail = `${emailSettings.fromName} <${emailSettings.fromEmail}>`;
+
     const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: fromEmail,
       to: Array.isArray(options.to) ? options.to : [options.to],
       subject: options.subject,
       html: options.html,

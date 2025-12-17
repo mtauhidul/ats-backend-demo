@@ -121,6 +121,44 @@ router.post(
 );
 
 /**
+ * @route   PATCH /api/emails/:id
+ * @desc    Update email properties (isRead, isStarred, isArchived, etc.)
+ * @access  All authenticated users
+ */
+router.patch("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Allowed fields to update
+    const allowedFields = ['isRead', 'isStarred', 'isArchived', 'labels'];
+    const filteredData: any = {};
+    
+    for (const field of allowedFields) {
+      if (updateData[field] !== undefined) {
+        filteredData[field] = updateData[field];
+      }
+    }
+
+    if (Object.keys(filteredData).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    filteredData.updatedAt = FieldValue.serverTimestamp();
+
+    const db = getFirestoreDB();
+    await db.collection('emails').doc(id).update(filteredData);
+
+    logger.info(`Email ${id} updated successfully`, { fields: Object.keys(filteredData) });
+    
+    res.status(200).json({ message: 'Email updated successfully' });
+  } catch (error: any) {
+    logger.error('Error updating email:', error);
+    res.status(500).json({ error: 'Failed to update email' });
+  }
+});
+
+/**
  * @route   DELETE /api/emails/:id
  * @desc    Delete email
  * @access  Admin, Super Admin
