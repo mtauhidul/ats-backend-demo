@@ -122,19 +122,21 @@ ${resumeText}
 
 CRITICAL EXTRACTION RULES:
 
-1. PERSONAL INFO (MANDATORY):
-   - Extract first name and last name (clean up ALL CAPS, weird spacing like "MMOOINNNUURR" → "Moinur")
-   - For names with multiple parts (e.g., "MIR TAUHIDUL ISLAM"):
-     * firstName = First part only (e.g., "Mir")
-     * lastName = Last part only (e.g., "Islam")
+1. PERSONAL INFO (EXTRACT ONLY IF CLEARLY PRESENT - DO NOT GUESS OR INVENT):
+   - Extract first name and last name from the RESUME HEADER ONLY (clean up ALL CAPS, normalize spacing)
+   - IMPORTANT: If no name is clearly visible at the top of the resume, set firstName and lastName to empty string ""
+   - DO NOT extract names from: references section, contact persons, supervisors, or example names in instructions
+   - For names with multiple parts:
+     * firstName = First part only
+     * lastName = Last part only
      * Middle names are NOT included in firstName or lastName
-   - Example: "JOHN MICHAEL SMITH" → firstName: "John", lastName: "Smith"
-   - Example: "MIR TAUHIDUL ISLAM" → firstName: "Mir", lastName: "Islam"
+   - Example format: "JOHN MICHAEL SMITH" → firstName: "John", lastName: "Smith"
    - Find email (pattern: contains @)
-   - Find phone (any format: +880-xxx, 09xxx, etc.)
+   - Find phone (any format with country code if present)
    - Extract full address if present
    - Find LinkedIn URL (even if just username after "LinkedIn:")
    - Find portfolio/website URL
+   - CRITICAL: Only extract information that is ACTUALLY in the resume text. Do not use example names from these instructions.
 
 2. SKILLS (VERY IMPORTANT - DON'T MISS ANY):
    - Look in sections: SKILLS, TECHNICAL SKILLS, TOOLS, SOFTWARE, COMPETENCIES
@@ -234,7 +236,7 @@ IMPORTANT:
           messages: [
             {
               role: 'system',
-              content: 'You are an expert resume parser with 10+ years experience analyzing resumes in all formats. Extract EVERY piece of information, handle unusual formatting, parse all date formats, and be thorough. Always return valid JSON only, no markdown code blocks.',
+              content: 'You are an expert resume parser with 10+ years experience analyzing resumes in all formats. Extract ONLY information that is ACTUALLY PRESENT in the resume text - never guess, invent, or use example names from instructions. If information is not clearly present, return empty string or empty array. Handle unusual formatting, parse all date formats, and be thorough. Always return valid JSON only, no markdown code blocks.',
             },
             {
               role: 'user',
@@ -284,7 +286,32 @@ IMPORTANT:
           extractedText: resumeText,
         };
         
+        // CRITICAL VALIDATION: Verify extracted names actually appear in resume text
+        // This prevents AI from hallucinating names from examples in the prompt
+        if (result.personalInfo?.firstName) {
+          const firstName = result.personalInfo.firstName.toLowerCase();
+          const resumeLower = resumeText.toLowerCase();
+          
+          // Check if first name appears in resume (allow for variations in spacing/caps)
+          if (!resumeLower.includes(firstName)) {
+            logger.warn(`⚠️ Extracted firstName "${result.personalInfo.firstName}" not found in resume text - removing`);
+            result.personalInfo.firstName = '';
+          }
+        }
+        
+        if (result.personalInfo?.lastName) {
+          const lastName = result.personalInfo.lastName.toLowerCase();
+          const resumeLower = resumeText.toLowerCase();
+          
+          // Check if last name appears in resume
+          if (!resumeLower.includes(lastName)) {
+            logger.warn(`⚠️ Extracted lastName "${result.personalInfo.lastName}" not found in resume text - removing`);
+            result.personalInfo.lastName = '';
+          }
+        }
+        
         logger.info(`✅ Successfully parsed resume (attempt ${attempt})`);
+        logger.info(`📋 Extracted: ${result.personalInfo?.firstName || '[NO NAME]'} ${result.personalInfo?.lastName || ''}`);
         return result;
         
       } catch (error: any) {
