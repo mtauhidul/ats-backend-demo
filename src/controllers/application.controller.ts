@@ -501,6 +501,60 @@ export const updateApplication = asyncHandler(
       }
     }
 
+    // If status is being changed to rejected, delete application and associated files
+    if (updates.status && updates.status.toLowerCase() === "rejected") {
+      // Delete resume from Cloudinary if exists
+      if (application.resumeUrl) {
+        try {
+          const publicId = application.resumeUrl.split('/').slice(-2).join('/').split('.')[0];
+          await cloudinaryService.deleteFile(publicId, 'raw');
+          logger.info(`Deleted resume from Cloudinary: ${publicId}`);
+        } catch (error) {
+          logger.error('Failed to delete resume from Cloudinary:', error);
+        }
+      }
+
+      // Delete video from Cloudinary if exists
+      if ((application as any).videoIntroUrl) {
+        try {
+          const videoUrl = (application as any).videoIntroUrl;
+          // Only delete if it's a Cloudinary URL (not external link)
+          if (videoUrl.includes('cloudinary.com')) {
+            const publicId = videoUrl.split('/').slice(-2).join('/').split('.')[0];
+            await cloudinaryService.deleteFile(publicId, 'raw');
+            logger.info(`Deleted video from Cloudinary: ${publicId}`);
+          }
+        } catch (error) {
+          logger.error('Failed to delete video from Cloudinary:', error);
+        }
+      }
+
+      // Delete application from Firestore
+      await applicationService.delete(id);
+      logger.info(`Deleted rejected application: ${application.email}`);
+
+      // Log activity
+      if (req.user?.id) {
+        logActivity({
+          userId: req.user.id,
+          action: "application_rejected_and_deleted",
+          resourceType: "application",
+          resourceId: id,
+          resourceName: `${application.firstName} ${application.lastName}`,
+          metadata: {
+            email: application.email,
+            deletedFiles: {
+              resume: !!application.resumeUrl,
+              video: !!(application as any).videoIntroUrl,
+            },
+          },
+        }).catch((err) => logger.error("Failed to log activity:", err));
+      }
+
+      successResponse(res, { deleted: true }, "Application rejected and deleted successfully");
+      return;
+    }
+
     await applicationService.update(id, updateData);
 
     // Fetch updated application
