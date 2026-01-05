@@ -1,6 +1,5 @@
 import { candidateService } from '../services/firestore/candidate.service';
 import { applicationService } from '../services/firestore/application.service';
-import { emailService } from '../services/firestore/email.service';
 
 /**
  * Backfill raw email body for candidates who applied via email automation
@@ -14,93 +13,89 @@ async function backfillEmailBody() {
   console.log('🚀 Starting email body backfill script...\n');
   
   try {
-    // Get all candidates
-    console.log('📊 Fetching all candidates...');
-    const allCandidates = await candidateService.findAll();
-    console.log(`   Found ${allCandidates.length} total candidates\n`);
+    // Get all applications from email automation
+    console.log('📊 Fetching all applications from email automation...');
+    const emailApplications = await applicationService.find([
+      { field: 'source', operator: '==', value: 'email_automation' },
+    ]);
     
-    // Filter candidates who applied via email
-    const emailCandidates = allCandidates.filter(c => 
-      c.source === 'email_automation' || c.source === 'email'
-    );
+    console.log(`   Found ${emailApplications.length} applications from email automation\n`);
     
-    console.log(`📧 Found ${emailCandidates.length} candidates from email automation\n`);
-    
-    if (emailCandidates.length === 0) {
-      console.log('✅ No candidates to update');
+    if (emailApplications.length === 0) {
+      console.log('✅ No email automation applications found');
       return;
     }
     
     let successCount = 0;
     let skipCount = 0;
     let failCount = 0;
+    let noCandidateCount = 0;
     
-    for (const candidate of emailCandidates) {
+    for (const application of emailApplications) {
       try {
-        // Skip if already has email body
-        if (candidate.rawEmailBody || candidate.rawEmailBodyHtml) {
-          console.log(`⏭️  Skipping ${candidate.firstName} ${candidate.lastName} - already has email body`);
+        console.log(`\n🔍 Processing application: ${application.firstName} ${application.lastName} (${application.email})`);
+        
+        // Skip if application doesn't have email body
+        if (!application.rawEmailBody && !application.rawEmailBodyHtml) {
+          console.log(`   ⏭️  No email body in application`);
           skipCount++;
           continue;
         }
         
-        console.log(`\n🔍 Processing: ${candidate.firstName} ${candidate.lastName} (${candidate.email})`);
+        // Find corresponding candidate
+        let candidate = null;
         
-        // Find the original application
-        let application = null;
-        
-        // Try to find by candidate's application IDs
-        if (candidate.applicationIds && candidate.applicationIds.length > 0) {
-          const appId = candidate.applicationIds[0];
-          application = await applicationService.findById(appId);
+        // Try to find by candidate ID from application
+        if (application.candidateId) {
+          candidate = await candidateService.findById(application.candidateId);
         }
         
-        // If not found, try to find by email and source
-        if (!application) {
-          const applications = await applicationService.find([
-            { field: 'email', operator: '==', value: candidate.email },
-            { field: 'source', operator: '==', value: 'email_automation' },
+        // If not found, try to find by email
+        if (!candidate) {
+          const candidates = await candidateService.find([
+            { field: 'email', operator: '==', value: application.email },
           ]);
           
-          if (applications.length > 0) {
-            application = applications[0];
+          if (candidates.length > 0) {
+            // Find candidate that has this application ID in applicationIds array
+            candidate = candidates.find(c => 
+              c.applicationIds && c.applicationIds.includes(application.id!)
+            ) || candidates[0];
           }
         }
         
-        if (!application) {
-          console.log(`   ⚠️  No application found`);
-          failCount++;
+        if (!candidate) {
+          console.log(`   ⚠️  No candidate found for this application`);
+          noCandidateCount++;
           continue;
         }
         
-        console.log(`   ✅ Found application: ${application.id}`);
+        console.log(`   ✅ Found candidate: ${candidate.firstName} ${candidate.lastName} (ID: ${candidate.id})`);
         
-        // Find the inbound email using application ID
-        const emails = await emailService.find([
-          { field: 'applicationId', operator: '==', value: application.id },
-          { field: 'direction', operator: '==', value: 'inbound' },
-        ]);
-        
-        if (emails.length === 0) {
-          console.log(`   ⚠️  No inbound email found`);
-          failCount++;
+        // Skip if candidate already has email body
+        if (candidate.rawEmailBody || candidate.rawEmailBodyHtml) {
+          console.log(`   ⏭️  Candidate already has email body`);
+          skipCount++;
           continue;
         }
         
-        const email = emails[0];
-        console.log(`   ✅ Found email: ${email.subject}`);
-        
-        // Update candidate with email body
+        // Update candidate with email body from application
         const updateData: any = {};
         
-        if (email.body) {
-          updateData.rawEmailBody = email.body;
-          console.log(`   📝 Adding text body (${email.body.length} chars)`);
+        if (application.rawEmailBody) {
+          updateData.rawEmailBody = application.rawEmailBody;
+          console.log(`   📝 Adding text body (${application.rawEmailBody.length} chars)`);
         }
         
-        if (email.bodyHtml) {
-          updateData.rawEmailBodyHtml = email.bodyHtml;
-          console.log(`   🌐 Adding HTML body (${email.bodyHtml.length} chars)`);
+        if (application.rawEmailBodyHtml) {
+          updateData.rawEmailBodyHtml = application.rawEmailBodyHtml;
+          console.log(`   🌐 Adding HTML body (${application.rawEmailBodyHtml.length} chars)`);
+        }
+        
+        // Also update source if not set
+        if (!candidate.source && application.source) {
+          updateData.source = application.source;
+          console.log(`   🏷️  Setting source: ${application.source}`);
         }
         
         if (Object.keys(updateData).length > 0) {
@@ -108,12 +103,12 @@ async function backfillEmailBody() {
           console.log(`   ✅ Updated candidate`);
           successCount++;
         } else {
-          console.log(`   ⚠️  No email body to add`);
+          console.log(`   ⚠️  No data to update`);
           failCount++;
         }
         
       } catch (err) {
-        console.error(`   ❌ Error processing candidate:`, err);
+        console.error(`   ❌ Error processing application:`, err);
         failCount++;
       }
     }
@@ -121,9 +116,10 @@ async function backfillEmailBody() {
     console.log('\n' + '='.repeat(80));
     console.log('📊 SUMMARY');
     console.log('='.repeat(80));
-    console.log(`Total candidates: ${emailCandidates.length}`);
+    console.log(`Total applications: ${emailApplications.length}`);
     console.log(`✅ Successfully updated: ${successCount}`);
     console.log(`⏭️  Skipped (already has data): ${skipCount}`);
+    console.log(`⚠️  No candidate found: ${noCandidateCount}`);
     console.log(`❌ Failed: ${failCount}`);
     console.log('='.repeat(80));
     

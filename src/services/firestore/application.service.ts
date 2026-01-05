@@ -62,6 +62,10 @@ export interface IApplication {
   source: "manual" | "direct_apply" | "email_automation";
   sourceEmail?: string;
   sourceEmailAccountId?: string;
+  sourceMessageId?: string; // Email message ID for deduplication
+  rawEmailBody?: string; // Raw text body of email if applied via email
+  rawEmailBodyHtml?: string; // Raw HTML body of email if applied via email
+  candidateId?: string; // Reference to candidate if converted
 
   // Pipeline
   pipelineStageId?: string;
