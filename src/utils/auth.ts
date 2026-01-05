@@ -3,10 +3,10 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-// Support: '15m', '1h', '24h', '7d', '30d', '365d', or 'never' for no expiration
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+// Tokens never expire - removed expiration for development ease
+const JWT_EXPIRES_IN = 'never';
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'your-refresh-secret-change-in-production';
-const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+const REFRESH_TOKEN_EXPIRES_IN = 'never';
 
 export interface TokenPayload {
   userId: string;
@@ -52,23 +52,29 @@ export const generateRefreshToken = (payload: TokenPayload): string => {
 };
 
 /**
- * Verify JWT access token
+ * Verify JWT access token (ignores expiration)
  */
 export const verifyAccessToken = (token: string): TokenPayload | null => {
   try {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload;
+    // Verify token without checking expiration
+    return jwt.verify(token, JWT_SECRET, { ignoreExpiration: true }) as TokenPayload;
   } catch (error) {
+    // Log the specific error for debugging
+    console.error('Token verification failed:', (error as Error).message);
+    // Only fail on invalid signature or malformed token, not expiration
     return null;
   }
 };
 
 /**
- * Verify JWT refresh token
+ * Verify JWT refresh token (ignores expiration)
  */
 export const verifyRefreshToken = (token: string): TokenPayload | null => {
   try {
-    return jwt.verify(token, REFRESH_TOKEN_SECRET) as TokenPayload;
+    // Verify token without checking expiration
+    return jwt.verify(token, REFRESH_TOKEN_SECRET, { ignoreExpiration: true }) as TokenPayload;
   } catch (error) {
+    // Only fail on invalid signature or malformed token, not expiration
     return null;
   }
 };

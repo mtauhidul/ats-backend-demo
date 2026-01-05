@@ -36,6 +36,10 @@ export const authenticate = async (
     const payload = verifyAccessToken(token);
 
     if (!payload) {
+      logger.warn('Token verification failed', { 
+        tokenPreview: token.substring(0, 20) + '...',
+        authHeader: authHeader.substring(0, 30) + '...'
+      });
       throw new AuthenticationError("Invalid or expired token");
     }
 

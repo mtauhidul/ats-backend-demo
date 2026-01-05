@@ -19,6 +19,8 @@ export const createCandidateSchema = z.object({
     status: z.enum(['active', 'hired', 'rejected', 'withdrawn']).default('active'),
     notes: z.string().optional(),
     source: z.enum(['manual', 'direct_apply', 'email_automation']).optional(),
+    rawEmailBody: z.string().optional(),
+    rawEmailBodyHtml: z.string().optional(),
   }),
 });
 

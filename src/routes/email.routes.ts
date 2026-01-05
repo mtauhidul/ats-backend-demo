@@ -600,6 +600,8 @@ const checkEmailsForAllAccounts = async () => {
                   resumeUrl: resumeUploadResult.url,
                   resumeOriginalName: resumeAttachment.filename,
                   resumeRawText, // Keep as pure raw text - no modifications
+                  rawEmailBody: email.body, // 🔥 Store raw email body text
+                  rawEmailBodyHtml: email.bodyHtml, // 🔥 Store raw email body HTML
                   status: (account.defaultApplicationStatus || 'pending') as any,
                   // AI validation results
                   isValidResume,
@@ -1328,6 +1330,8 @@ router.post("/automation/bulk-import", requireRole("admin"), async (req, res): P
             resumeUrl: resumeUploadResult.url,
             resumeOriginalName: resumeAttachment.filename,
             resumeRawText, // Keep as pure raw text - no modifications
+            rawEmailBody: email.body, // 🔥 Store raw email body text
+            rawEmailBodyHtml: email.bodyHtml, // 🔥 Store raw email body HTML
             status: (account.defaultApplicationStatus || 'pending') as any,
             // AI validation results
             isValidResume,
