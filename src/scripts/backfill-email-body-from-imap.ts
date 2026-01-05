@@ -23,6 +23,7 @@ interface EmailFetchResult {
   messageId: string;
   rawEmailBody?: string;
   rawEmailBodyHtml?: string;
+  emailSubject?: string;
   success: boolean;
   error?: string;
 }
@@ -82,9 +83,10 @@ async function fetchEmailByMessageId(
 
             emailData.rawEmailBody = parsed.text || '';
             emailData.rawEmailBodyHtml = parsed.html || parsed.textAsHtml || '';
+            emailData.emailSubject = parsed.subject || '';
             emailData.success = true;
 
-            console.log(`      ✅ Parsed email body (text: ${emailData.rawEmailBody?.length || 0} chars, html: ${emailData.rawEmailBodyHtml?.length || 0} chars)`);
+            console.log(`      ✅ Parsed email (subject: "${emailData.emailSubject}", text: ${emailData.rawEmailBody?.length || 0} chars, html: ${emailData.rawEmailBodyHtml?.length || 0} chars)`);
           });
         });
       });
@@ -178,21 +180,21 @@ async function backfillEmailBodyFromImap() {
     console.log(`   Provider: ${emailAccount.provider}\n`);
 
     // Get all applications from email automation without email body
-    console.log('📊 Fetching applications that need email body...');
+    console.log('📊 Fetching applications that need email body or subject...');
     const emailApplications = await applicationService.find([
       { field: 'source', operator: '==', value: 'email_automation' },
     ]);
 
-    // Filter to only those without email body and with sourceMessageId
+    // Filter to those that need email body or subject and have sourceMessageId
     const applicationsToProcess = emailApplications.filter(
       (app) => 
-        (!app.rawEmailBody && !app.rawEmailBodyHtml) && 
+        ((!app.rawEmailBody && !app.rawEmailBodyHtml) || !app.emailSubject) && 
         app.sourceMessageId
     );
 
     console.log(`   Total email automation applications: ${emailApplications.length}`);
-    console.log(`   Missing email body: ${applicationsToProcess.length}`);
-    console.log(`   Already have email body: ${emailApplications.length - applicationsToProcess.length}\n`);
+    console.log(`   Need email body or subject: ${applicationsToProcess.length}`);
+    console.log(`   Already have all data: ${emailApplications.length - applicationsToProcess.length}\n`);
 
     if (applicationsToProcess.length === 0) {
       console.log('✅ All applications already have email body or no sourceMessageId');
@@ -229,23 +231,33 @@ async function backfillEmailBodyFromImap() {
             continue;
           }
 
-          if (!emailResult.rawEmailBody && !emailResult.rawEmailBodyHtml) {
-            console.log(`   ⚠️  Email fetched but no body content`);
+          if (!emailResult.rawEmailBody && !emailResult.rawEmailBodyHtml && !emailResult.emailSubject) {
+            console.log(`   ⚠️  Email fetched but no content or subject`);
             failCount++;
             continue;
           }
 
-          // Update application with email body
+          // Update application with email data
           const appUpdateData: any = {};
-          if (emailResult.rawEmailBody) {
+          let appNeedsUpdate = false;
+          
+          if (!application.rawEmailBody && emailResult.rawEmailBody) {
             appUpdateData.rawEmailBody = emailResult.rawEmailBody;
+            appNeedsUpdate = true;
           }
-          if (emailResult.rawEmailBodyHtml) {
+          if (!application.rawEmailBodyHtml && emailResult.rawEmailBodyHtml) {
             appUpdateData.rawEmailBodyHtml = emailResult.rawEmailBodyHtml;
+            appNeedsUpdate = true;
+          }
+          if (!application.emailSubject && emailResult.emailSubject) {
+            appUpdateData.emailSubject = emailResult.emailSubject;
+            appNeedsUpdate = true;
           }
 
-          await applicationService.update(application.id!, appUpdateData);
-          console.log(`   ✅ Updated application with email body`);
+          if (appNeedsUpdate) {
+            await applicationService.update(application.id!, appUpdateData);
+            console.log(`   ✅ Updated application with email data`);
+          }
 
           // Find corresponding candidate
           let candidate = null;
@@ -274,21 +286,38 @@ async function backfillEmailBodyFromImap() {
 
           console.log(`   ✅ Found candidate: ${candidate.firstName} ${candidate.lastName}`);
 
-          // Update candidate if doesn't have email body
-          if (!candidate.rawEmailBody && !candidate.rawEmailBodyHtml) {
-            const candUpdateData: any = {
-              ...appUpdateData,
-            };
+          // Build candidate update data
+          const candUpdateData: any = {};
+          let needsUpdate = false;
 
-            // Also update source if not set
-            if (!candidate.source && application.source) {
-              candUpdateData.source = application.source;
-            }
+          // Add email body if missing
+          if (!candidate.rawEmailBody && emailResult.rawEmailBody) {
+            candUpdateData.rawEmailBody = emailResult.rawEmailBody;
+            needsUpdate = true;
+          }
+          
+          if (!candidate.rawEmailBodyHtml && emailResult.rawEmailBodyHtml) {
+            candUpdateData.rawEmailBodyHtml = emailResult.rawEmailBodyHtml;
+            needsUpdate = true;
+          }
 
+          // Add email subject if missing
+          if (!candidate.emailSubject && emailResult.emailSubject) {
+            candUpdateData.emailSubject = emailResult.emailSubject;
+            needsUpdate = true;
+          }
+
+          // Add source if not set
+          if (!candidate.source && application.source) {
+            candUpdateData.source = application.source;
+            needsUpdate = true;
+          }
+
+          if (needsUpdate) {
             await candidateService.update(candidate.id!, candUpdateData);
-            console.log(`   ✅ Updated candidate with email body`);
+            console.log(`   ✅ Updated candidate with email data`);
           } else {
-            console.log(`   ⏭️  Candidate already has email body`);
+            console.log(`   ⏭️  Candidate already has all email data`);
           }
 
           successCount++;

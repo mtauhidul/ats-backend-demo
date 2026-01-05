@@ -25,6 +25,7 @@ export interface FirestoreCandidateData {
   source?: 'manual' | 'direct_apply' | 'email_automation' | 'email';
   rawEmailBody?: string; // Raw text body of email if applied via email
   rawEmailBodyHtml?: string; // Raw HTML body of email if applied via email
+  emailSubject?: string; // Email subject if applied via email
 
   // Company association
   companyId: string;

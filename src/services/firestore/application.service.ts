@@ -65,6 +65,7 @@ export interface IApplication {
   sourceMessageId?: string; // Email message ID for deduplication
   rawEmailBody?: string; // Raw text body of email if applied via email
   rawEmailBodyHtml?: string; // Raw HTML body of email if applied via email
+  emailSubject?: string; // Email subject if applied via email
   candidateId?: string; // Reference to candidate if converted
 
   // Pipeline
