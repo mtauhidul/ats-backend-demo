@@ -91,12 +91,14 @@ export const createApplication = asyncHandler(
     }
 
     // Check for duplicate application (including unassigned with jobId: null)
+    // Note: Exclude rejected applications as they are auto-deleted
     const existingApplications = await applicationService.findByEmail(
       data.email
     );
     const existingApplication = existingApplications.find(
       (app) =>
-        (data.jobId && app.jobId === data.jobId) || (!data.jobId && !app.jobId)
+        app.status !== 'rejected' && // Exclude rejected (they get auto-deleted)
+        ((data.jobId && app.jobId === data.jobId) || (!data.jobId && !app.jobId))
     );
 
     if (existingApplication) {

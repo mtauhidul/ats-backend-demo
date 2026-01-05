@@ -8,6 +8,7 @@ cloudinary.config({
   cloud_name: config.cloudinary.cloudName,
   api_key: config.cloudinary.apiKey,
   api_secret: config.cloudinary.apiSecret,
+  timeout: 300000, // 5 minutes timeout for large uploads
 });
 
 export interface UploadResult {
@@ -141,19 +142,51 @@ class CloudinaryService {
   }
 
   /**
-   * Upload video introduction
+   * Upload video introduction with optimized settings for large files
    */
   async uploadVideo(
     fileBuffer: Buffer,
     filename: string
   ): Promise<UploadResult> {
-    const sanitizedFilename = this.sanitizeFilename(filename);
-    return this.uploadFile(fileBuffer, {
-      folder: 'ats/videos',
-      filename: `video_${Date.now()}_${sanitizedFilename}`,
-      resourceType: 'video',
-      allowedFormats: ['mp4', 'mov', 'avi', 'webm', 'mkv'],
-    });
+    try {
+      const sanitizedFilename = this.sanitizeFilename(filename);
+      const publicId = `video_${Date.now()}_${sanitizedFilename}`;
+      
+      logger.info(`Starting video upload: ${filename} (${(fileBuffer.length / 1024 / 1024).toFixed(2)} MB)`);
+
+      return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'ats/videos',
+            public_id: publicId,
+            resource_type: 'video',
+            allowed_formats: ['mp4', 'mov', 'avi', 'webm', 'mkv'],
+            chunk_size: 6000000, // 6MB chunks for better reliability
+            timeout: 300000, // 5 minutes timeout
+          },
+          (error, result) => {
+            if (error || !result) {
+              logger.error('Cloudinary video upload error:', error);
+              reject(new InternalServerError(error?.message || 'Video upload failed'));
+            } else {
+              logger.info(`Video uploaded successfully: ${result.secure_url}`);
+              resolve({
+                url: result.secure_url,
+                publicId: result.public_id,
+                format: result.format,
+                resourceType: result.resource_type,
+                bytes: result.bytes,
+              });
+            }
+          }
+        );
+
+        uploadStream.end(fileBuffer);
+      });
+    } catch (error: any) {
+      logger.error('Video upload service error:', error);
+      throw new InternalServerError(error?.message || 'Video upload service error');
+    }
   }
 
   /**

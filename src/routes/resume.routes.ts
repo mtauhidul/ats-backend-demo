@@ -114,10 +114,14 @@ router.post(
         return res.status(400).json({ success: false, error: { message: 'No video uploaded' } });
       }
 
-      // Upload to Cloudinary
+      const logger = require('../utils/logger').default;
+      logger.info(`Video upload attempt - File: ${req.file.originalname}, MIME: ${req.file.mimetype}, Size: ${(req.file.size / 1024 / 1024).toFixed(2)} MB`);
+
+      // Upload to Cloudinary with optimized settings
       const cloudinary = require('../services/cloudinary.service').default;
       const result = await cloudinary.uploadVideo(req.file.buffer, req.file.originalname);
 
+      logger.info(`Video uploaded successfully: ${result.url}`);
       res.json({
         success: true,
         data: {
@@ -128,9 +132,20 @@ router.post(
         },
       });
     } catch (error: any) {
+      const logger = require('../utils/logger').default;
+      logger.error(`Video upload failed: ${error.message}`);
+      
+      // Provide helpful error messages
+      let errorMessage = error.message || 'Failed to upload video';
+      if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+        errorMessage = 'Video upload timed out. Please try with a smaller file or check your internet connection.';
+      } else if (errorMessage.includes('file format')) {
+        errorMessage = 'Invalid video format. Please upload MP4, MOV, AVI, WEBM, or MKV files.';
+      }
+      
       res.status(500).json({
         success: false,
-        error: { message: error.message || 'Failed to upload video' },
+        error: { message: errorMessage },
       });
     }
   }
