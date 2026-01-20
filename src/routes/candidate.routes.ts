@@ -1,6 +1,6 @@
 import express from 'express';
 import { validate } from '../middleware/validation';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticate, requireRole, requirePermission } from '../middleware/auth';
 import {
   createCandidate,
   getCandidates,
@@ -36,11 +36,11 @@ router.use(authenticate);
 /**
  * @route   POST /api/candidates
  * @desc    Create new candidate (manual entry)
- * @access  Recruiter, Admin, Super Admin
+ * @access  Users with canManageCandidates permission
  */
 router.post(
   '/',
-  requireRole('recruiter', 'admin'),
+  requirePermission('canManageCandidates'),
   validate(createCandidateSchema),
   createCandidate
 );
@@ -48,11 +48,11 @@ router.post(
 /**
  * @route   GET /api/candidates
  * @desc    Get all candidates with filters
- * @access  Recruiter, Admin, Super Admin, Hiring Manager
+ * @access  Users with canManageCandidates permission
  */
 router.get(
   '/',
-  requireRole('recruiter', 'admin', 'hiring_manager'),
+  requirePermission('canManageCandidates'),
   validate(listCandidatesSchema),
   getCandidates
 );
@@ -60,33 +60,33 @@ router.get(
 /**
  * @route   GET /api/candidates/stats
  * @desc    Get candidate statistics
- * @access  Recruiter, Admin, Super Admin, Hiring Manager
+ * @access  Users with canManageCandidates permission
  */
 router.get(
   '/stats',
-  requireRole('recruiter', 'admin', 'hiring_manager'),
+  requirePermission('canManageCandidates'),
   getCandidateStats
 );
 
 /**
  * @route   GET /api/candidates/top
  * @desc    Get top candidates by AI score
- * @access  Recruiter, Admin, Super Admin, Hiring Manager
+ * @access  Users with canManageCandidates permission
  */
 router.get(
   '/top',
-  requireRole('recruiter', 'admin', 'hiring_manager'),
+  requirePermission('canManageCandidates'),
   getTopCandidates
 );
 
 /**
  * @route   GET /api/candidates/:id
  * @desc    Get candidate by ID
- * @access  Recruiter, Admin, Super Admin, Hiring Manager, Interviewer
+ * @access  Users with canManageCandidates or canReviewApplications permission
  */
 router.get(
   '/:id',
-  requireRole('recruiter', 'admin', 'hiring_manager', 'interviewer'),
+  requirePermission('canManageCandidates', 'canReviewApplications'),
   validate(candidateIdSchema),
   getCandidateById
 );
@@ -94,11 +94,11 @@ router.get(
 /**
  * @route   PUT /api/candidates/:id
  * @desc    Update candidate
- * @access  Recruiter, Admin, Super Admin
+ * @access  Users with canManageCandidates permission
  */
 router.put(
   '/:id',
-  requireRole('recruiter', 'admin'),
+  requirePermission('canManageCandidates'),
   validate(updateCandidateSchema),
   updateCandidate
 );
@@ -106,11 +106,11 @@ router.put(
 /**
  * @route   PATCH /api/candidates/:id
  * @desc    Update candidate (partial update)
- * @access  Recruiter, Admin, Super Admin
+ * @access  Users with canManageCandidates permission
  */
 router.patch(
   '/:id',
-  requireRole('recruiter', 'admin'),
+  requirePermission('canManageCandidates'),
   validate(updateCandidateSchema),
   updateCandidate
 );
@@ -118,11 +118,11 @@ router.patch(
 /**
  * @route   DELETE /api/candidates/:id
  * @desc    Delete candidate
- * @access  Admin, Super Admin
+ * @access  Users with canManageCandidates permission
  */
 router.delete(
   '/:id',
-  requireRole('admin'),
+  requirePermission('canManageCandidates'),
   validate(candidateIdSchema),
   deleteCandidate
 );
@@ -130,11 +130,11 @@ router.delete(
 /**
  * @route   POST /api/candidates/:id/move-stage
  * @desc    Move candidate to different pipeline stage
- * @access  Recruiter, Admin, Super Admin, Hiring Manager
+ * @access  Users with canManageCandidates permission
  */
 router.post(
   '/:id/move-stage',
-  requireRole('recruiter', 'admin', 'hiring_manager'),
+  requirePermission('canManageCandidates'),
   validate(moveCandidateStageSchema),
   moveCandidateStage
 );
@@ -142,11 +142,11 @@ router.post(
 /**
  * @route   POST /api/candidates/:id/rescore
  * @desc    Re-score candidate against a job
- * @access  Recruiter, Admin, Super Admin
+ * @access  Users with canManageCandidates permission
  */
 router.post(
   '/:id/rescore',
-  requireRole('recruiter', 'admin'),
+  requirePermission('canManageCandidates'),
   validate(rescoreCandidateSchema),
   rescoreCandidate
 );
@@ -154,11 +154,11 @@ router.post(
 /**
  * @route   POST /api/candidates/bulk/move-stage
  * @desc    Bulk move candidates to new stage
- * @access  Recruiter, Admin, Super Admin
+ * @access  Users with canManageCandidates permission
  */
 router.post(
   '/bulk/move-stage',
-  requireRole('recruiter', 'admin'),
+  requirePermission('canManageCandidates'),
   validate(bulkMoveCandidatesSchema),
   bulkMoveCandidates
 );
@@ -166,22 +166,22 @@ router.post(
 /**
  * @route   POST /api/candidates/pipeline/add
  * @desc    Add candidates to a pipeline (assign to first stage)
- * @access  Recruiter, Admin, Super Admin
+ * @access  Users with canManageCandidates permission
  */
 router.post(
   '/pipeline/add',
-  requireRole('recruiter', 'admin'),
+  requirePermission('canManageCandidates'),
   addCandidatesToPipeline
 );
 
 /**
  * @route   GET /api/candidates/pipeline/unassigned
  * @desc    Get candidates for a job that are not in any pipeline
- * @access  Recruiter, Admin, Super Admin, Hiring Manager
+ * @access  Users with canManageCandidates permission
  */
 router.get(
   '/pipeline/unassigned',
-  requireRole('recruiter', 'admin', 'hiring_manager'),
+  requirePermission('canManageCandidates'),
   getCandidatesWithoutPipeline
 );
 

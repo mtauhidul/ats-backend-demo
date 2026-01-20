@@ -133,15 +133,17 @@ export const getCandidates = asyncHandler(
     // Fetch all candidates (Firestore doesn't support complex queries like MongoDB)
     let allCandidates = await candidateService.find([]);
 
-    // 🔒 RBAC: Non-admin users can only see candidates assigned to them
+    // 🔒 RBAC: Users without canManageCandidates permission can only see candidates assigned to them
     const userRole = (req.user as any)?.role;
     const userId = (req.user as any)?.id;
+    const userPermissions = (req.user as any)?.permissions;
+    const canManageAllCandidates = userRole === "admin" || userPermissions?.canManageCandidates === true;
 
     logger.info(
-      `🔍 RBAC Check - User: ${userId}, Role: ${userRole}, Total candidates: ${allCandidates.length}`
+      `🔍 RBAC Check - User: ${userId}, Role: ${userRole}, canManageCandidates: ${canManageAllCandidates}, Total candidates: ${allCandidates.length}`
     );
 
-    if (userRole !== "admin" && userId) {
+    if (!canManageAllCandidates && userId) {
       const beforeFilter = allCandidates.length;
 
       // Debug: Log first few candidates' assignedTo values
@@ -169,16 +171,16 @@ export const getCandidates = asyncHandler(
             logger.info(`✅ Matched by object: ${c.firstName} ${c.lastName}`);
           return matches;
         }
-        // If no assignedTo, candidate is not visible to non-admin users
+        // If no assignedTo, candidate is not visible to users without canManageCandidates permission
         logger.info(`❌ No assignedTo: ${c.firstName} ${c.lastName}`);
         return false;
       });
       logger.info(
-        `🔒 RBAC filter applied: ${userRole} user ${userId} can see ${allCandidates.length}/${beforeFilter} candidates`
+        `🔒 RBAC filter applied: ${userRole} user ${userId} (canManageCandidates: ${canManageAllCandidates}) can see ${allCandidates.length}/${beforeFilter} candidates`
       );
     } else {
       logger.info(
-        `👑 Admin user or no userId - showing all ${allCandidates.length} candidates`
+        `👑 User with canManageCandidates permission or admin - showing all ${allCandidates.length} candidates`
       );
     }
 
@@ -406,11 +408,13 @@ export const getCandidateById = asyncHandler(
       throw new NotFoundError("Candidate not found");
     }
 
-    // 🔒 RBAC: Non-admin users can only view candidates assigned to them
+    // 🔒 RBAC: Users without canManageCandidates permission can only view candidates assigned to them
     const userRole = (req.user as any)?.role;
     const userId = (req.user as any)?.id;
+    const userPermissions = (req.user as any)?.permissions;
+    const canManageAllCandidates = userRole === "admin" || userPermissions?.canManageCandidates === true;
 
-    if (userRole !== "admin" && userId) {
+    if (!canManageAllCandidates && userId) {
       const assignedTo = (candidate as any).assignedTo;
       let isAssigned = false;
 
@@ -488,11 +492,13 @@ export const updateCandidate = asyncHandler(
       throw new NotFoundError("Candidate not found");
     }
 
-    // 🔒 RBAC: Non-admin users can only update candidates assigned to them
+    // 🔒 RBAC: Users without canManageCandidates permission can only update candidates assigned to them
     const userRole = (req.user as any)?.role;
     const userId = (req.user as any)?.id;
+    const userPermissions = (req.user as any)?.permissions;
+    const canManageAllCandidates = userRole === "admin" || userPermissions?.canManageCandidates === true;
 
-    if (userRole !== "admin" && userId) {
+    if (!canManageAllCandidates && userId) {
       const assignedTo = (candidate as any).assignedTo;
       let isAssigned = false;
 
@@ -794,11 +800,13 @@ export const deleteCandidate = asyncHandler(
       throw new NotFoundError("Candidate not found");
     }
 
-    // 🔒 RBAC: Non-admin users can only delete candidates assigned to them
+    // 🔒 RBAC: Users without canManageCandidates permission can only delete candidates assigned to them
     const userRole = (req.user as any)?.role;
     const userId = (req.user as any)?.id;
+    const userPermissions = (req.user as any)?.permissions;
+    const canManageAllCandidates = userRole === "admin" || userPermissions?.canManageCandidates === true;
 
-    if (userRole !== "admin" && userId) {
+    if (!canManageAllCandidates && userId) {
       const assignedTo = (candidate as any).assignedTo;
       let isAssigned = false;
 
@@ -1114,11 +1122,13 @@ export const getCandidatesWithoutPipeline = asyncHandler(
     // Find candidates for this job that have no pipeline stage assigned
     let allCandidates = await candidateService.findByJobId(jobId as string);
 
-    // 🔒 RBAC: Non-admin users can only see candidates assigned to them
+    // 🔒 RBAC: Users without canManageCandidates permission can only see candidates assigned to them
     const userRole = (req.user as any)?.role;
     const userId = (req.user as any)?.id;
+    const userPermissions = (req.user as any)?.permissions;
+    const canManageAllCandidates = userRole === "admin" || userPermissions?.canManageCandidates === true;
 
-    if (userRole !== "admin" && userId) {
+    if (!canManageAllCandidates && userId) {
       allCandidates = allCandidates.filter((c: any) => {
         const assignedTo = c.assignedTo;
         if (typeof assignedTo === "string") {
@@ -1156,11 +1166,13 @@ export const getCandidateStats = asyncHandler(
     // Fetch all candidates
     let allCandidates = await candidateService.find([]);
 
-    // 🔒 RBAC: Non-admin users can only see stats for candidates assigned to them
+    // 🔒 RBAC: Users without canManageCandidates permission can only see stats for candidates assigned to them
     const userRole = (req.user as any)?.role;
     const userId = (req.user as any)?.id;
+    const userPermissions = (req.user as any)?.permissions;
+    const canManageAllCandidates = userRole === "admin" || userPermissions?.canManageCandidates === true;
 
-    if (userRole !== "admin" && userId) {
+    if (!canManageAllCandidates && userId) {
       allCandidates = allCandidates.filter((c: any) => {
         const assignedTo = c.assignedTo;
         if (typeof assignedTo === "string") {
