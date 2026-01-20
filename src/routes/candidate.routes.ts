@@ -1,6 +1,6 @@
 import express from 'express';
 import { validate } from '../middleware/validation';
-import { authenticate, requireRole, requirePermission } from '../middleware/auth';
+import { authenticate, requirePermission } from '../middleware/auth';
 import {
   createCandidate,
   getCandidates,
