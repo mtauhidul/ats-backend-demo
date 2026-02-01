@@ -16,7 +16,7 @@ import {
   listEmailAccountsSchema,
 } from '../types/emailAccount.types';
 
-const router = Router();
+const router: Router = Router();
 
 // All email account routes require authentication and admin role
 router.use(authenticate, requireAdmin);

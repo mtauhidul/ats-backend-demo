@@ -11,7 +11,7 @@ import {
   broadcastImportantNotice,
 } from '../controllers/notification.controller';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // All notification routes require authentication
 router.use(authenticate);

@@ -10,7 +10,7 @@ import {
   markConversationAsRead,
 } from '../controllers/message.controller';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // All message routes require authentication
 router.use(authenticate);

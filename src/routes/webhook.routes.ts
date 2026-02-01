@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { handleResendWebhook, testWebhook } from '../controllers/webhook.controller';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * @route   POST /api/webhooks/resend

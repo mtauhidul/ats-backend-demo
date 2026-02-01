@@ -22,7 +22,7 @@ import webhookRoutes from './webhook.routes';
 import activityRoutes from './activity.routes';
 import settingsRoutes from './settings.routes';
 
-const router = Router();
+const router: Router = Router();
 
 // API Routes
 router.use('/auth', authRoutes);

@@ -12,7 +12,7 @@ import {
   parseAndSaveResumeSchema,
 } from '../types/resume.types';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * PUBLIC ROUTES (No Authentication Required)

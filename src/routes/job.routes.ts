@@ -18,7 +18,7 @@ import {
   bulkUpdateJobStatusSchema,
 } from '../types/job.types';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 /**
  * @route   GET /api/jobs

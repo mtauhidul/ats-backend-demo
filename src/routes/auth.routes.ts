@@ -31,7 +31,7 @@ const validateRequest = (req: Request, res: Response, next: NextFunction): void 
   next();
 };
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * Public routes (no authentication required)

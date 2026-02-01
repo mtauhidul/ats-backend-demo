@@ -18,7 +18,7 @@ import logger from "../utils/logger";
 import { getFirestoreDB } from "../config/firebase";
 import { FieldValue } from "firebase-admin/firestore";
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // All routes require authentication
 router.use(authenticate);

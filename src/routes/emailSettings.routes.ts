@@ -2,7 +2,7 @@ import express from 'express';
 import { getEmailSettings, updateEmailSettings } from '../controllers/emailSettings.controller';
 import { authenticate, requireRole } from '../middleware/auth';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // All routes require authentication
 router.use(authenticate);

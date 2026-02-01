@@ -6,7 +6,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { getUserActivityLog, getMyActivities } from '../controllers/activity.controller';
 
-const router = Router();
+const router: Router = Router();
 
 // Get current user's activities
 router.get('/me', authenticate, getMyActivities);

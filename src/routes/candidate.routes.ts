@@ -26,7 +26,7 @@ import {
   bulkMoveCandidatesSchema,
 } from '../types/candidate.types';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 /**
  * All routes require authentication

@@ -4,7 +4,7 @@ import { authenticate, requireRole } from '../middleware/auth';
 import { createTag, getTags, getTagById, updateTag, deleteTag } from '../controllers/tag.controller';
 import { createTagSchema, updateTagSchema, tagIdSchema } from '../types/tag.types';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 router.use(authenticate);
 
 router.post('/', requireRole('admin'), validate(createTagSchema), createTag);

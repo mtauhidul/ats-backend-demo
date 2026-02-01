@@ -9,7 +9,7 @@ import {
   getJobTeamMembers,
 } from '../controllers/teamMember.controller';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // All routes require authentication
 router.use(authenticate);

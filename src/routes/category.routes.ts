@@ -4,7 +4,7 @@ import { authenticate, requireRole } from '../middleware/auth';
 import { createCategory, getCategories, getCategoryById, updateCategory, deleteCategory } from '../controllers/category.controller';
 import { createCategorySchema, updateCategorySchema, categoryIdSchema } from '../types/category.types';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 router.use(authenticate);
 
 router.post('/', requireRole('admin'), validate(createCategorySchema), createCategory);

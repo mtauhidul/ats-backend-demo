@@ -22,7 +22,7 @@ import {
   bulkUpdateStatusSchema,
 } from '../types/application.types';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * PUBLIC ROUTES (No Authentication Required)

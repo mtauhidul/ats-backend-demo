@@ -11,7 +11,7 @@ import {
   getDefaultTemplates,
 } from '../controllers/emailTemplate.controller';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * All routes require authentication
