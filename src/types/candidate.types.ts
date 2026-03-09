@@ -35,6 +35,7 @@ export const updateCandidateSchema = z.object({
     status: z.enum(['active', 'hired', 'rejected', 'withdrawn']).optional(),
     notes: z.string().optional(),
     tags: z.array(z.string()).optional(),
+    inTalentPool: z.boolean().optional(),
   }),
   params: z.object({
     id: z.string().min(1, 'Invalid ID format'),
