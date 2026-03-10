@@ -707,7 +707,22 @@ export const approveApplication = asyncHandler(
       throw new NotFoundError("Application not found");
     }
 
-    // Check if already approved (check if candidate exists)
+    // Check if already approved
+    // Primary check: application already has a candidateId AND that doc exists
+    if (application.candidateId) {
+      const linkedCandidate = await candidateService.findById(
+        application.candidateId
+      );
+      if (linkedCandidate) {
+        throw new CustomValidationError(
+          "Application has already been approved"
+        );
+      }
+      // candidateId is set but doc is missing — the candidate was lost; fall
+      // through and recreate it using the existing candidateId
+    }
+
+    // Secondary check: scan by applicationIds array (legacy / belt-and-suspenders)
     const allCandidates = await candidateService.find([]);
     const existingCandidate = allCandidates.find((c: any) =>
       c.applicationIds?.includes(id)
