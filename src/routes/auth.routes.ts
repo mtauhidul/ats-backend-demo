@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import logger from '../utils/logger';
 import {
   register,
   registerFirstAdmin,
@@ -24,7 +25,7 @@ import { Request, Response, NextFunction } from 'express';
 const validateRequest = (req: Request, res: Response, next: NextFunction): void => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    console.log('Validation errors:', errors.array());
+    logger.debug('Validation errors:', errors.array());
     res.status(400).json({ errors: errors.array() });
     return;
   }

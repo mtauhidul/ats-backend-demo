@@ -269,12 +269,12 @@ export const updateInboundEmailLinks = async (
 
             await email.save();
             updated++;
-            console.log(
+            logger.info(
               `✓ Updated email ${email._id} - linked to job ${email.jobId}`
             );
           } else {
             skipped++;
-            console.log(
+            logger.debug(
               `⚠ Email ${email._id} - no application found for candidate`
             );
           }

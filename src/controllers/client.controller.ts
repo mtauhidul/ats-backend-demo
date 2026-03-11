@@ -95,11 +95,6 @@ export const createClient = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const data: CreateClientInput = req.body;
 
-    console.log("=== BACKEND CREATE CLIENT ===");
-    console.log("Received data:", data);
-    console.log("Contacts in request:", data.contacts);
-    console.log("============================");
-
     // Check for duplicate client by companyName
     const existingClients = await clientService.find([
       { field: "companyName", operator: "==", value: data.companyName },
@@ -118,10 +113,6 @@ export const createClient = asyncHandler(
         id: contact.id || `contact_${Date.now()}_${index}`,
       })) || [];
 
-    console.log("=== CONTACTS WITH IDS ===");
-    console.log("Processed contacts:", contacts);
-    console.log("========================");
-
     // Create client
     const clientId = await clientService.create({
       ...data,
@@ -136,11 +127,6 @@ export const createClient = asyncHandler(
     if (!client) {
       throw new Error("Failed to create client");
     }
-
-    console.log("=== CREATED CLIENT ===");
-    console.log("Client ID:", clientId);
-    console.log("Client contacts:", client.contacts);
-    console.log("=====================");
 
     logger.info(
       `Client created: ${client.companyName} by user ${req.user?.id}`
@@ -292,16 +278,6 @@ export const updateClient = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const updates: UpdateClientInput = req.body;
-
-    console.log("=== UPDATE CLIENT ===");
-    console.log("Client ID:", id);
-    console.log("Updates received:", JSON.stringify(updates, null, 2));
-    console.log("Contacts in updates:", (updates as any).contacts);
-    console.log(
-      "ActivityHistory in updates:",
-      (updates as any).activityHistory
-    );
-    console.log("====================");
 
     const client = await clientService.findById(id);
 

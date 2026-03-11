@@ -272,16 +272,6 @@ export class FirestoreBaseService<T extends Record<string, any>> {
         ...this.convertTimestamps(doc.data()),
       })) as (T & { id: string })[];
       
-      // Debug logging for categories collection
-      if (this.collectionPath === 'categories') {
-        console.log(`📊 find() in ${this.collectionPath}:`, {
-          snapshotSize: snapshot.size,
-          docsCount: docs.length,
-          isArray: Array.isArray(docs),
-          firstDoc: docs[0] || null
-        });
-      }
-      
       return docs;
     } catch (error) {
       logger.error(
