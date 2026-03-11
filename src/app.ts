@@ -85,7 +85,6 @@ class App {
         data: {
           message: 'Server is running',
           timestamp: new Date().toISOString(),
-          environment: config.env,
         },
       });
     });

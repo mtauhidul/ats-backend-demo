@@ -235,9 +235,6 @@ export const login = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body;
 
-    logger.info(`=== LOGIN REQUEST START ===`);
-    logger.info(`Request body: ${JSON.stringify(req.body)}`);
-
     // Validate required fields
     if (!email || !password) {
       throw new BadRequestError('Email and password are required');
@@ -254,8 +251,6 @@ export const login = asyncHandler(
     }
 
     logger.info(`User found: ${user.id}, isActive: ${user.isActive}, emailVerified: ${user.emailVerified}, hasPassword: ${!!user.passwordHash}`);
-
-    logger.info(`User found: ${user.id}, isActive: ${user.isActive}, emailVerified: ${user.emailVerified}`);
 
     // Check if user is active
     if (!user.isActive) {

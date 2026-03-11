@@ -34,9 +34,6 @@ export const getTags = asyncHandler(
     
     tags = tags.sort((a: any, b: any) => a.name.localeCompare(b.name));
     
-    console.log('Tags being returned:', tags.length, 'tags');
-    console.log('First tag:', tags[0]);
-    
     successResponse(res, tags, 'Tags retrieved successfully');
   }
 );

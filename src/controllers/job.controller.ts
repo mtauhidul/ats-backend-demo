@@ -265,14 +265,10 @@ export const getJobs = asyncHandler(
     // Fetch all unique clients
     const clientsMap = new Map();
     if (allClientIds.size > 0) {
-      console.log('📋 Client IDs to fetch:', Array.from(allClientIds));
       const clients = await clientService.find([]);
-      console.log('📋 Clients fetched:', clients.length);
-      console.log('📋 First client:', clients[0]);
       clients.forEach((client: any) => {
         clientsMap.set(client.id, client);
       });
-      console.log('📋 Clients map size:', clientsMap.size);
     }
 
     // Replace category IDs and client IDs with populated objects
@@ -290,8 +286,6 @@ export const getJobs = asyncHandler(
       // Populate client
       if (job.clientId) {
         const client = clientsMap.get(job.clientId);
-        console.log(`🔍 Job "${job.title}" clientId:`, job.clientId);
-        console.log(`🔍 Found client:`, client ? client.companyName : 'NOT FOUND');
         if (client) {
           result.clientId = {
             id: client.id,

@@ -1,9 +1,6 @@
 import app from "./app";
 import { config, validateConfig } from "./config";
 import { connectDatabase } from "./config/database";
-// import emailAutomationJob from "./jobs/emailAutomation.job"; // TODO: Convert to Firestore
-// import { scheduleDataCleanup } from "./jobs/dataCleanup.job"; // TODO: Convert to Firestore
-// import { seedEmailTemplates } from "./seeds/emailTemplates.seed"; // TODO: Convert to Firestore
 import logger from "./utils/logger";
 
 // Validate environment variables
@@ -19,13 +16,6 @@ async function startServer() {
   try {
     // Connect to Firestore
     await connectDatabase();
-
-    // TODO: Firestore TTL - implement via TTL policy or Cloud Functions
-    // MongoDB TTL indexes are not applicable to Firestore
-    // await validateTTLSetup();
-
-    // TODO: Seed email templates using Firestore service
-    // await seedEmailTemplates();
 
     // Start Express server
     const server = app.listen(config.port, () => {
@@ -43,12 +33,6 @@ async function startServer() {
       logger.info(`📊 Health check: http://localhost:${config.port}/health`);
       logger.info(`📡 API: http://localhost:${config.port}/api`);
     });
-
-    // TODO: Start email automation cron job using Firestore
-    // await emailAutomationJob.start();
-
-    // TODO: Schedule data cleanup job using Firestore
-    // scheduleDataCleanup();
 
     // Graceful shutdown
     const shutdown = async (signal: string) => {

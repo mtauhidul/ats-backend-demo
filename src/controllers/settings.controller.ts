@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { systemSettingsService } from "../services/firestore";
+import logger from "../utils/logger";
 
 /**
  * Get IMAP settings (without password)
@@ -28,7 +29,7 @@ export const getSmtpSettings = async (
       data: smtpSettings,
     });
   } catch (error: any) {
-    console.error("Error fetching IMAP settings:", error);
+    logger.error("Error fetching IMAP settings:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch IMAP settings",
@@ -89,7 +90,7 @@ export const updateSmtpSettings = async (
       data: smtpSettings,
     });
   } catch (error: any) {
-    console.error("Error updating IMAP settings:", error);
+    logger.error("Error updating IMAP settings:", error);
     res.status(500).json({
       success: false,
       message: "Failed to update IMAP settings",
@@ -176,7 +177,7 @@ export const testSmtpConnection = async (
       message: "IMAP connection successful",
     });
   } catch (error: any) {
-    console.error("Error testing IMAP connection:", error);
+    logger.error("Error testing IMAP connection:", error);
     res.status(500).json({
       success: false,
       message: "Failed to connect to IMAP server",
@@ -214,7 +215,7 @@ export const syncInboundEmails = async (
       },
     });
   } catch (error: any) {
-    console.error("Error syncing emails:", error);
+    logger.error("Error syncing emails:", error);
     res.status(500).json({
       success: false,
       message: "Failed to sync emails",
@@ -243,7 +244,7 @@ export const updateInboundEmailLinks = async (
       jobId: { $exists: false },
     });
 
-    console.log(`Found ${emails.length} inbound emails without job links`);
+    logger.info(`Found ${emails.length} inbound emails without job links`);
     
     let updated = 0;
     let skipped = 0;
@@ -279,7 +280,7 @@ export const updateInboundEmailLinks = async (
           }
         }
       } catch (error: any) {
-        console.error(`✗ Error updating email ${email._id}:`, error);
+        logger.error(`✗ Error updating email ${email._id}:`, error);
         errors.push(`Email ${email._id}: ${error.message}`);
       }
     }
@@ -295,7 +296,7 @@ export const updateInboundEmailLinks = async (
       },
     });
   } catch (error: any) {
-    console.error("Error updating email links:", error);
+    logger.error("Error updating email links:", error);
     res.status(500).json({
       success: false,
       message: "Failed to update email links",

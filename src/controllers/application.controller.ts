@@ -773,24 +773,6 @@ export const approveApplication = asyncHandler(
       ) {
         pipeline.stages = Object.values(pipeline.stages);
       }
-
-      console.log("=== PIPELINE DEBUG ===");
-      console.log("Pipeline ID:", pipeline.id);
-      console.log("Pipeline Name:", pipeline.name);
-      console.log("Has stages:", !!pipeline.stages);
-      console.log("Stages is array:", Array.isArray(pipeline.stages));
-      console.log("Stages count:", pipeline.stages?.length || 0);
-      if (pipeline.stages && pipeline.stages.length > 0) {
-        console.log(
-          "First stage:",
-          JSON.stringify({
-            id: pipeline.stages[0].id,
-            name: pipeline.stages[0].name,
-            order: pipeline.stages[0].order,
-          })
-        );
-      }
-      console.log("======================");
     }
 
     // Perform AI scoring
@@ -834,19 +816,7 @@ export const approveApplication = asyncHandler(
     );
 
     // Debug: Log parsedData before creating candidate
-    console.log("Creating candidate from application:", {
-      applicationId: application.id,
-      hasParsedData: !!(application as any).parsedData,
-      parsedDataKeys: (application as any).parsedData
-        ? Object.keys((application as any).parsedData)
-        : [],
-      skillsCount: (application as any).parsedData?.skills?.length || 0,
-      experienceCount: (application as any).parsedData?.experience?.length || 0,
-      educationCount: (application as any).parsedData?.education?.length || 0,
-      skillsSample: application.parsedData?.skills?.[0],
-      experienceSample: JSON.stringify(application.parsedData?.experience?.[0]),
-      educationSample: JSON.stringify(application.parsedData?.education?.[0]),
-    });
+    logger.debug(`Approving application ${application.id}, parsedData keys: ${Object.keys((application as any).parsedData || {}).join(", ")}`);
 
     // Helper function to calculate years of experience from experience array
     const calculateYearsOfExperience = (experiences: any[]): number => {
@@ -1107,25 +1077,7 @@ export const approveApplication = asyncHandler(
       throw new Error("Failed to create candidate");
     }
 
-    console.log("=== CANDIDATE CREATED ===");
-    console.log("Candidate ID:", candidate.id);
-    console.log(
-      "Candidate Name:",
-      `${candidate.firstName} ${candidate.lastName}`
-    );
-    console.log("Job IDs:", candidate.jobIds);
-    console.log(
-      "Current Pipeline Stage ID:",
-      (candidate as any).currentPipelineStageId
-    );
-    console.log("Status:", candidate.status);
-    console.log("Skills Count:", (candidate as any).skills?.length || 0);
-    console.log(
-      "Experience Count:",
-      (candidate as any).experience?.length || 0
-    );
-    console.log("Education Count:", (candidate as any).education?.length || 0);
-    console.log("========================");
+    logger.info(`Candidate created: ${candidate.id} (${candidate.firstName} ${candidate.lastName}), stageId: ${(candidate as any).currentPipelineStageId}`);
 
     // Update job's candidateIds array to maintain bidirectional relationship
     const currentCandidateIds = job.candidateIds || [];

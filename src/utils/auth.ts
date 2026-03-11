@@ -1,12 +1,12 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import logger from './logger';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-// Tokens never expire - removed expiration for development ease
-const JWT_EXPIRES_IN = 'never';
+const JWT_EXPIRES_IN = '24h';
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'your-refresh-secret-change-in-production';
-const REFRESH_TOKEN_EXPIRES_IN = 'never';
+const REFRESH_TOKEN_EXPIRES_IN = '30d';
 
 export interface TokenPayload {
   userId: string;
@@ -33,10 +33,6 @@ export const comparePassword = async (password: string, hash: string): Promise<b
  * Generate JWT access token
  */
 export const generateAccessToken = (payload: TokenPayload): string => {
-  // If JWT_EXPIRES_IN is 'never', don't set expiration
-  if (JWT_EXPIRES_IN === 'never') {
-    return jwt.sign(payload, JWT_SECRET);
-  }
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
 };
 
@@ -44,37 +40,28 @@ export const generateAccessToken = (payload: TokenPayload): string => {
  * Generate JWT refresh token
  */
 export const generateRefreshToken = (payload: TokenPayload): string => {
-  // If REFRESH_TOKEN_EXPIRES_IN is 'never', don't set expiration
-  if (REFRESH_TOKEN_EXPIRES_IN === 'never') {
-    return jwt.sign(payload, REFRESH_TOKEN_SECRET);
-  }
   return jwt.sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN } as jwt.SignOptions);
 };
 
 /**
- * Verify JWT access token (ignores expiration)
+ * Verify JWT access token
  */
 export const verifyAccessToken = (token: string): TokenPayload | null => {
   try {
-    // Verify token without checking expiration
-    return jwt.verify(token, JWT_SECRET, { ignoreExpiration: true }) as TokenPayload;
+    return jwt.verify(token, JWT_SECRET) as TokenPayload;
   } catch (error) {
-    // Log the specific error for debugging
-    console.error('Token verification failed:', (error as Error).message);
-    // Only fail on invalid signature or malformed token, not expiration
+    logger.debug('Access token verification failed: ' + (error as Error).message);
     return null;
   }
 };
 
 /**
- * Verify JWT refresh token (ignores expiration)
+ * Verify JWT refresh token
  */
 export const verifyRefreshToken = (token: string): TokenPayload | null => {
   try {
-    // Verify token without checking expiration
-    return jwt.verify(token, REFRESH_TOKEN_SECRET, { ignoreExpiration: true }) as TokenPayload;
+    return jwt.verify(token, REFRESH_TOKEN_SECRET) as TokenPayload;
   } catch (error) {
-    // Only fail on invalid signature or malformed token, not expiration
     return null;
   }
 };

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { emailTemplateService } from '../services/firestore';
+import logger from '../utils/logger';
 
 /**
  * Extract variables from template body
@@ -50,7 +51,7 @@ export const getEmailTemplates = async (req: Request, res: Response): Promise<vo
       count: templates.length
     });
   } catch (error: any) {
-    console.error('Error fetching email templates:', error);
+    logger.error('Error fetching email templates:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch email templates',
@@ -82,7 +83,7 @@ export const getEmailTemplateById = async (req: Request, res: Response): Promise
       data: template
     });
   } catch (error: any) {
-    console.error('Error fetching email template:', error);
+    logger.error('Error fetching email template:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch email template',
@@ -114,7 +115,7 @@ export const getTemplatesByType = async (req: Request, res: Response): Promise<v
       count: templates.length
     });
   } catch (error: any) {
-    console.error('Error fetching templates by type:', error);
+    logger.error('Error fetching templates by type:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch templates by type',
@@ -163,7 +164,7 @@ export const createEmailTemplate = async (req: Request, res: Response): Promise<
       data: template
     });
   } catch (error: any) {
-    console.error('Error creating email template:', error);
+    logger.error('Error creating email template:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create email template',
@@ -214,7 +215,7 @@ export const updateEmailTemplate = async (req: Request, res: Response): Promise<
       data: updatedTemplate
     });
   } catch (error: any) {
-    console.error('Error updating email template:', error);
+    logger.error('Error updating email template:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update email template',
@@ -249,7 +250,7 @@ export const deleteEmailTemplate = async (req: Request, res: Response): Promise<
       message: 'Email template deleted successfully'
     });
   } catch (error: any) {
-    console.error('Error deleting email template:', error);
+    logger.error('Error deleting email template:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete email template',
@@ -296,7 +297,7 @@ export const duplicateEmailTemplate = async (req: Request, res: Response): Promi
       data: duplicate
     });
   } catch (error: any) {
-    console.error('Error duplicating email template:', error);
+    logger.error('Error duplicating email template:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to duplicate email template',
@@ -322,7 +323,7 @@ export const getDefaultTemplates = async (_req: Request, res: Response): Promise
       count: templates.length
     });
   } catch (error: any) {
-    console.error('Error fetching default templates:', error);
+    logger.error('Error fetching default templates:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch default templates',

@@ -104,13 +104,6 @@ export const config = {
     serviceAccountJson: process.env.FIREBASE_SERVICE_ACCOUNT_JSON || "",
   },
 
-  // Migration settings - DEPRECATED: We removed MongoDB completely
-  // Keeping this temporarily for backward compatibility, but not used
-  migration: {
-    dualWriteEnabled: false, // Always false - MongoDB removed
-    useFirestoreReads: true, // Always true - only Firestore now
-    defaultCompanyId: process.env.DEFAULT_COMPANY_ID || "default-company",
-  },
 };
 
 // Validation
@@ -118,7 +111,10 @@ export function validateConfig() {
   const required = [
     "FIREBASE_PROJECT_ID",
     "OPENAI_API_KEY",
-    "RESEND_API_KEY"
+    "RESEND_API_KEY",
+    "JWT_SECRET",
+    "REFRESH_TOKEN_SECRET",
+    "ENCRYPTION_KEY",
   ];
 
   const missing = required.filter((key) => !process.env[key]);

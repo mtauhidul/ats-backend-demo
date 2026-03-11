@@ -26,12 +26,8 @@ export const createCategory = asyncHandler(
 export const getCategories = asyncHandler(
   async (_req: Request, res: Response): Promise<void> => {
     let categories = await categoryService.find([]);
-    console.log('Raw categories from service:', categories);
-    console.log('Categories count:', categories.length);
-    console.log('Is array?', Array.isArray(categories));
     
     categories = categories.sort((a: any, b: any) => a.name.localeCompare(b.name));
-    console.log('Sorted categories count:', categories.length);
     
     successResponse(res, categories, 'Categories retrieved successfully');
   }

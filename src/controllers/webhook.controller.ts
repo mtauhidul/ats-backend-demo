@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { Resend } from "resend";
+import crypto from "crypto";
 import { config } from "../config";
 import {
   candidateService,
@@ -15,17 +16,57 @@ const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET || "";
 const resend = new Resend(config.resend.apiKey);
 
 /**
+ * Verify Resend webhook signature using HMAC-SHA256
+ * Resend signs webhooks with: svix-id.svix-timestamp.body
+ */
+function verifyWebhookSignature(req: Request): boolean {
+  const svixId = req.headers["svix-id"] as string;
+  const svixTimestamp = req.headers["svix-timestamp"] as string;
+  const svixSignature = req.headers["svix-signature"] as string;
+
+  if (!svixId || !svixTimestamp || !svixSignature) return false;
+
+  // Reject requests older than 5 minutes to prevent replay attacks
+  const timestampMs = parseInt(svixTimestamp, 10) * 1000;
+  if (Math.abs(Date.now() - timestampMs) > 5 * 60 * 1000) {
+    logger.warn("Webhook timestamp too old, possible replay attack");
+    return false;
+  }
+
+  const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+  const signingPayload = `${svixId}.${svixTimestamp}.${rawBody}`;
+  const expectedSig = crypto
+    .createHmac("sha256", RESEND_WEBHOOK_SECRET)
+    .update(signingPayload)
+    .digest("base64");
+
+  // svix-signature may contain multiple signatures: "v1,<sig> v1,<sig2>"
+  const signatures = svixSignature.split(" ").map((s) => s.replace(/^v1,/, ""));
+  return signatures.some((sig) => {
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(sig, "base64"),
+        Buffer.from(expectedSig, "base64")
+      );
+    } catch {
+      return false;
+    }
+  });
+}
+
+/**
  * Handle Resend webhook events
  * Supports: email.sent, email.delivered, email.bounced, email.opened, email.clicked
  */
 export const handleResendWebhook = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const signature = req.headers["resend-signature"] as string;
-
-    // Verify webhook signature (if secret is configured)
-    if (RESEND_WEBHOOK_SECRET && signature) {
-      // TODO: Implement signature verification
-      // For now, we'll proceed without verification in development
+    // Verify webhook signature when secret is configured
+    if (RESEND_WEBHOOK_SECRET) {
+      if (!verifyWebhookSignature(req)) {
+        logger.warn("Webhook signature verification failed");
+        res.status(401).json({ success: false, error: "Invalid webhook signature" });
+        return;
+      }
     }
 
     const event = req.body;
