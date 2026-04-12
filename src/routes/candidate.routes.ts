@@ -1,37 +1,38 @@
-import express from 'express';
-import { validate } from '../middleware/validation';
-import { authenticate, requirePermission } from '../middleware/auth';
+import express from 'express'
 import {
-  createCandidate,
-  getCandidates,
-  getCandidateById,
-  updateCandidate,
-  deleteCandidate,
-  moveCandidateStage,
-  rescoreCandidate,
-  bulkMoveCandidates,
-  getCandidateStats,
-  getTopCandidates,
   addCandidatesToPipeline,
+  bulkMoveCandidates,
+  createCandidate,
+  deleteCandidate,
+  getCandidateActivity,
+  getCandidateById,
+  getCandidates,
+  getCandidateStats,
   getCandidatesWithoutPipeline,
   getDashboardAnalytics,
-} from '../controllers/candidate.controller';
+  getTopCandidates,
+  moveCandidateStage,
+  rescoreCandidate,
+  updateCandidate,
+} from '../controllers/candidate.controller'
+import { authenticate, requirePermission } from '../middleware/auth'
+import { validate } from '../middleware/validation'
 import {
-  createCandidateSchema,
-  updateCandidateSchema,
-  listCandidatesSchema,
+  bulkMoveCandidatesSchema,
   candidateIdSchema,
+  createCandidateSchema,
+  listCandidatesSchema,
   moveCandidateStageSchema,
   rescoreCandidateSchema,
-  bulkMoveCandidatesSchema,
-} from '../types/candidate.types';
+  updateCandidateSchema,
+} from '../types/candidate.types'
 
-const router: express.Router = express.Router();
+const router: express.Router = express.Router()
 
 /**
  * All routes require authentication
  */
-router.use(authenticate);
+router.use(authenticate)
 
 /**
  * @route   POST /api/candidates
@@ -43,7 +44,7 @@ router.post(
   requirePermission('canManageCandidates'),
   validate(createCandidateSchema),
   createCandidate
-);
+)
 
 /**
  * @route   GET /api/candidates
@@ -55,7 +56,7 @@ router.get(
   requirePermission('canManageCandidates'),
   validate(listCandidatesSchema),
   getCandidates
-);
+)
 
 /**
  * @route   GET /api/candidates/stats
@@ -66,18 +67,25 @@ router.get(
   '/stats',
   requirePermission('canManageCandidates'),
   getCandidateStats
-);
+)
 
 /**
  * @route   GET /api/candidates/top
  * @desc    Get top candidates by AI score
  * @access  Users with canManageCandidates permission
  */
+router.get('/top', requirePermission('canManageCandidates'), getTopCandidates)
+
+/**
+ * @route   GET /api/candidates/:id/activity
+ * @desc    Get full chronological activity timeline for a candidate
+ * @access  Users with canManageCandidates or canReviewApplications permission
+ */
 router.get(
-  '/top',
-  requirePermission('canManageCandidates'),
-  getTopCandidates
-);
+  '/:id/activity',
+  requirePermission('canManageCandidates', 'canReviewApplications'),
+  getCandidateActivity
+)
 
 /**
  * @route   GET /api/candidates/:id
@@ -89,7 +97,7 @@ router.get(
   requirePermission('canManageCandidates', 'canReviewApplications'),
   validate(candidateIdSchema),
   getCandidateById
-);
+)
 
 /**
  * @route   PUT /api/candidates/:id
@@ -101,7 +109,7 @@ router.put(
   requirePermission('canManageCandidates'),
   validate(updateCandidateSchema),
   updateCandidate
-);
+)
 
 /**
  * @route   PATCH /api/candidates/:id
@@ -113,7 +121,7 @@ router.patch(
   requirePermission('canManageCandidates'),
   validate(updateCandidateSchema),
   updateCandidate
-);
+)
 
 /**
  * @route   DELETE /api/candidates/:id
@@ -125,7 +133,7 @@ router.delete(
   requirePermission('canManageCandidates'),
   validate(candidateIdSchema),
   deleteCandidate
-);
+)
 
 /**
  * @route   POST /api/candidates/:id/move-stage
@@ -137,7 +145,7 @@ router.post(
   requirePermission('canManageCandidates'),
   validate(moveCandidateStageSchema),
   moveCandidateStage
-);
+)
 
 /**
  * @route   POST /api/candidates/:id/rescore
@@ -149,7 +157,7 @@ router.post(
   requirePermission('canManageCandidates'),
   validate(rescoreCandidateSchema),
   rescoreCandidate
-);
+)
 
 /**
  * @route   POST /api/candidates/bulk/move-stage
@@ -161,7 +169,7 @@ router.post(
   requirePermission('canManageCandidates'),
   validate(bulkMoveCandidatesSchema),
   bulkMoveCandidates
-);
+)
 
 /**
  * @route   POST /api/candidates/pipeline/add
@@ -172,7 +180,7 @@ router.post(
   '/pipeline/add',
   requirePermission('canManageCandidates'),
   addCandidatesToPipeline
-);
+)
 
 /**
  * @route   GET /api/candidates/pipeline/unassigned
@@ -183,16 +191,13 @@ router.get(
   '/pipeline/unassigned',
   requirePermission('canManageCandidates'),
   getCandidatesWithoutPipeline
-);
+)
 
 /**
  * @route   GET /api/candidates/analytics/dashboard
  * @desc    Get dashboard analytics (application trends by date)
  * @access  All authenticated users
  */
-router.get(
-  '/analytics/dashboard',
-  getDashboardAnalytics
-);
+router.get('/analytics/dashboard', getDashboardAnalytics)
 
-export default router;
+export default router

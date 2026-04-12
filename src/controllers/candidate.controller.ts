@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { logActivity } from '../services/activity.service'
 import { sendAssignmentEmail } from '../services/email.service'
 import {
+  activityLogService,
   candidateService,
   clientService,
   jobService,
@@ -717,9 +718,38 @@ export const updateCandidate = asyncHandler(
     // Log activity
     if (req.user?.id && updatedCandidate) {
       const activityMetadata: any = {}
+      const candidateName = `${updatedCandidate.firstName} ${updatedCandidate.lastName}`
 
+      // Job assignment event
+      if ((req.body as any).addToJob) {
+        const newJobId = (req.body as any).addToJob
+        const assignedJob = await jobService.findById(newJobId).catch(() => null)
+        logActivity({
+          userId: req.user.id,
+          action: 'candidate_job_assigned',
+          resourceType: 'candidate',
+          resourceId: id,
+          resourceName: candidateName,
+          metadata: { jobId: newJobId, jobTitle: assignedJob?.title || 'Unknown Job' },
+        }).catch(err => logger.error('Failed to log activity:', err))
+      }
+      // Talent pool change
+      else if (
+        (updates as any).inTalentPool !== undefined &&
+        (updates as any).inTalentPool !== (candidate as any).inTalentPool
+      ) {
+        logActivity({
+          userId: req.user.id,
+          action: (updates as any).inTalentPool
+            ? 'candidate_added_to_talent_pool'
+            : 'candidate_removed_from_talent_pool',
+          resourceType: 'candidate',
+          resourceId: id,
+          resourceName: candidateName,
+        }).catch(err => logger.error('Failed to log activity:', err))
+      }
       // Track specific changes
-      if (
+      else if (
         (updates as any).status &&
         (updates as any).status !== (candidate as any).status
       ) {
@@ -1439,5 +1469,137 @@ export const getDashboardAnalytics = asyncHandler(
       analytics,
       'Dashboard analytics retrieved successfully'
     )
+  }
+)
+
+/**
+ * Get full activity timeline for a candidate
+ * Merges activityLogs (direct + related) with stageHistory from jobApplications
+ * Returns oldest-first chronological list
+ */
+export const getCandidateActivity = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params
+
+    const candidate = await candidateService.findById(id)
+    if (!candidate) {
+      throw new NotFoundError('Candidate not found')
+    }
+
+    // Fetch all persisted activity logs for this candidate
+    const activityLogs = await activityLogService
+      .findByCandidateId(id)
+      .catch(() => [] as any[])
+
+    // Enrich logs with job/client names where missing (cache lookups)
+    const jobCache = new Map<string, any>()
+    const clientCache = new Map<string, any>()
+
+    const getJob = async (jobId: string) => {
+      if (!jobId) return null
+      if (!jobCache.has(jobId)) {
+        const job = await jobService.findById(jobId).catch(() => null)
+        jobCache.set(jobId, job)
+      }
+      return jobCache.get(jobId)
+    }
+
+    const getClient = async (clientId: string) => {
+      if (!clientId) return null
+      if (!clientCache.has(clientId)) {
+        const client = await clientService.findById(clientId).catch(() => null)
+        clientCache.set(clientId, client)
+      }
+      return clientCache.get(clientId)
+    }
+
+    // Enrich activityLogs that have jobId but missing jobTitle
+    const enrichedLogs = await Promise.all(
+      activityLogs.map(async (log: any) => {
+        const meta = log.metadata || {}
+        if (meta.jobId && !meta.jobTitle) {
+          const job = await getJob(meta.jobId)
+          if (job) {
+            meta.jobTitle = job.title
+            if (job.clientId) {
+              const clientIdStr =
+                typeof job.clientId === 'object'
+                  ? job.clientId?.id || job.clientId?._id
+                  : job.clientId
+              const client = await getClient(clientIdStr)
+              if (client) meta.clientName = (client as any).companyName
+            }
+          }
+        }
+        return { ...log, metadata: meta }
+      })
+    )
+
+    // Build synthetic events from stageHistory (covers candidates created before logging was added)
+    const jobApplications = (candidate as any).jobApplications || []
+    const syntheticEvents: any[] = []
+
+    for (const jobApp of jobApplications) {
+      const jobId =
+        jobApp.jobId?.id || jobApp.jobId?._id || jobApp.jobId?.toString() || jobApp.jobId
+
+      const job = await getJob(jobId)
+      const jobTitle = job?.title || 'Unknown Job'
+
+      let clientName = 'Unknown Client'
+      if (job?.clientId) {
+        const clientIdStr =
+          typeof job.clientId === 'object'
+            ? job.clientId?.id || job.clientId?._id
+            : job.clientId
+        const client = await getClient(clientIdStr)
+        if (client) clientName = (client as any).companyName || 'Unknown Client'
+      }
+
+      const toDate = (val: any): Date => {
+        if (!val) return new Date()
+        if (typeof val === 'object' && 'seconds' in val)
+          return new Date(val.seconds * 1000)
+        const d = new Date(val)
+        return isNaN(d.getTime()) ? new Date() : d
+      }
+
+      // Add stageHistory entries not already captured by activityLogs
+      const stageHistory: any[] = jobApp.stageHistory || []
+      for (const entry of stageHistory) {
+        const changedAt = toDate(entry.changedAt)
+        const alreadyLogged = enrichedLogs.some((log: any) => {
+          if (log.action !== 'candidate_stage_changed') return false
+          if (log.metadata?.jobId !== jobId) return false
+          const diff = Math.abs(new Date(log.createdAt).getTime() - changedAt.getTime())
+          return diff < 10000 // within 10 seconds = same event
+        })
+        if (!alreadyLogged) {
+          syntheticEvents.push({
+            id: `synthetic_stage_${jobId}_${changedAt.getTime()}`,
+            action: 'candidate_stage_changed',
+            resourceType: 'candidate',
+            resourceId: id,
+            resourceName: `${(candidate as any).firstName} ${(candidate as any).lastName}`,
+            metadata: {
+              jobId,
+              jobTitle,
+              clientName,
+              fromStageName: entry.fromStageName,
+              toStageName: entry.toStageName,
+            },
+            createdAt: changedAt,
+            userId: entry.changedBy || 'system',
+          })
+        }
+      }
+    }
+
+    // Merge and sort oldest-first
+    const allEvents = [...enrichedLogs, ...syntheticEvents].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    )
+
+    successResponse(res, allEvents, 'Candidate activity fetched successfully')
   }
 )
